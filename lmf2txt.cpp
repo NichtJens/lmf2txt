@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 		
 	}
 
-	sprintf(LMF_Filename,(char*)argv[1]);
+	strcpy(LMF_Filename,(char*)argv[1]);
 	unsigned int	i,j;
 	unsigned int	number_of_hits[NUM_CHANNELS];
 	memset(number_of_hits,0,NUM_CHANNELS*4);
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 	
 	FPRINT"Timestamp info = %i\n",LMF->timestamp_format);
 	if (LMF->common_mode == 0) FPRINT"Common start\n"); else FPRINT"Common stop\n");
-	FPRINT"Number of events = %I64i\n",LMF->uint64_Numberofevents);
+	FPRINT"Number of events = %lli\n",LMF->uint64_Numberofevents);
 	FPRINT"Data format = %i\n",LMF->data_format_in_userheader);
 	FPRINT"DAQ_ID = 0x%x\n",LMF->DAQ_ID);
 
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 // ---------------------------------------
 	while(true) {
 		if (LMF->ReadNextEvent())  {
-			FPRINT"------- #%i -------\n",LMF->GetEventNumber());
+			FPRINT"------- #%llu -------\n",LMF->GetEventNumber());
 			double new_timestamp = LMF->GetDoubleTimeStamp();
 			if (first_timestamp == 0.) first_timestamp = new_timestamp;
 			new_timestamp -= first_timestamp;
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
 					}
 				FPRINT"\n");
 			}
-			FPRINT"Levelinfo: %I64x\n",LMF->GetLastLevelInfo());
+			FPRINT"Levelinfo: %llx\n",LMF->GetLastLevelInfo());
 			FPRINT"\n");
 		}
 
