@@ -4,7 +4,7 @@
 //#include "stdio.h"
 #include "time.h"
 
-//#define LINUX
+#define LINUX
 
 #ifdef LINUX
 	#include "string.h"
