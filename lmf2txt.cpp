@@ -3,7 +3,7 @@
 #endif
 
 
-#include "conio.h"
+//#include "conio.h"
 #include "LMF_IO.h"
 
 #define NUM_CHANNELS 80
@@ -152,11 +152,11 @@ int main(int argc, char* argv[])
 			FPRINT"\n");
 		}
 
-		if (LMF->GetEventNumber()%50000 == 0) {
-			__int8 c;
-			while (_kbhit()) c = _getch();
-			if (c == 'q') break;
-		}
+//		if (LMF->GetEventNumber()%50000 == 0) {
+//			__int8 c;
+//			while (_kbhit()) c = _getch();
+//			if (c == 'q') break;
+//		}
 
 		if (LMF->errorflag) break;
 		if (LMF->GetEventNumber() > 100	&& only_100_events_flag) break;
