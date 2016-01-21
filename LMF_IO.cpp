@@ -1200,9 +1200,9 @@ __int32	LMF_IO::ReadCAMACHeader()
 __int32	LMF_IO::Read2TDC8PCI2Header()
 /////////////////////////////////////////////////////////////////
 {
-	unsigned __int64 StartPosition;
-	__int32 old_byte_counter;
-	bool desperate_mode;
+	unsigned __int64 StartPosition = 0;
+	__int32 old_byte_counter = 0;
+	bool desperate_mode = false;
 
 	TDC8PCI2.variable_event_length = 0;
 	__int32 byte_counter;
@@ -4482,7 +4482,7 @@ void LMF_IO::WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], do
 	WriteEventHeader(timestamp,cnt);
 
 	__int32 i,j;
-	__int32 ii;
+	__int32 ii = 0;
 	if (DAQ_ID_output != DAQ_ID_SIMPLE) {
 		for (i=0;i<number_of_channels_output;++i) {
 			__int32 hits = cnt[i];
@@ -4834,7 +4834,7 @@ bool LMF_IO::SeekToEventNumber(unsigned __int64 target_number)
 
 	if (target_number < 0) return false;
 	if (target_number > uint64_Numberofevents) return false;
-	__int32 eventsize;
+	__int32 eventsize = 0;
 	if (data_format_in_userheader == 2 ) eventsize = 2 * Numberofcoordinates;
 	if (data_format_in_userheader == 5 ) eventsize = 8 * Numberofcoordinates;
 	if (data_format_in_userheader == 10) eventsize = 4 * Numberofcoordinates;
@@ -5303,7 +5303,7 @@ bool LMF_IO::ReadNextEvent()
 		unsigned __int16 us16_Dummy;
 		__int32 i32_Dummy;
 		__int32 number_of_words;
-		__int32 channel;
+		__int32 channel = 0;
 		number_of_words = 0;
 		if (data_format_in_userheader == 2 ) {*input_lmf >> us16_Dummy; number_of_words = us16_Dummy;}
 		if (data_format_in_userheader == 10) *input_lmf >> number_of_words;
@@ -5558,7 +5558,7 @@ void LMF_IO::GetTDCDataArray(__int32 *tdc)
 /////////////////////////////////////////////////////////////////
 {
 	__int32 i,j;
-	__int32 ii;
+	__int32 ii = 0;
 
 	if (must_read_first) {
 		if (!ReadNextEvent()) return;
