@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 	FILE * ascii_outputfile_handle = fopen(ascii_output_filename.c_str(),"wt");
 
 
-	bool flag = false;
+//	bool flag = false;
 
 // Print parts of the header information:
 // ---------------------------------------

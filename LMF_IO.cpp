@@ -2607,7 +2607,7 @@ __int32	LMF_IO::ReadTDC8HPHeader_LMFV_8_to_9()
 	byte_counter += DAQ_info_Length;
 
 //	input_lmf->flush();
-	unsigned __int64 StartPosition = input_lmf->tell();
+//	unsigned __int64 StartPosition = input_lmf->tell();
 	__int32 old_byte_counter = byte_counter;
 
 	byte_counter = old_byte_counter;
@@ -2815,7 +2815,7 @@ __int32	LMF_IO::ReadTDC8HPHeader_LMFV_10()
 
 
 //	input_lmf->flush();
-	unsigned __int64 StartPosition = input_lmf->tell();
+//	unsigned __int64 StartPosition = input_lmf->tell();
 	__int32 old_byte_counter = byte_counter;
 
 	byte_counter = old_byte_counter;
@@ -3224,7 +3224,7 @@ __int32	LMF_IO::Write2TDC8PCI2Header()
 {
 	unsigned __int32 byte_counter;
 	byte_counter = 0;
-	__int32 int_Dummy = 0;
+//	__int32 int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -3302,7 +3302,7 @@ __int32	LMF_IO::WriteTDC8HPHeader_LMFV_1_to_7()
 	byte_counter = 0;
 	double	double_Dummy = 0.;
 	__int32		int_Dummy = 0;
-	unsigned __int32 unsigned_int_Dummy = 0;
+//	unsigned __int32 unsigned_int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -3453,8 +3453,8 @@ __int32	LMF_IO::WriteTDC8HPHeader_LMFV_8_to_9()
 	unsigned __int32 byte_counter	= 0;
 
 	bool			 bool_dummy = false;
-	double			 double_Dummy	= 0.;
-	__int32			 int_Dummy		= 0;
+//	double			 double_Dummy	= 0.;
+//	__int32			 int_Dummy		= 0;
 	unsigned __int32 unsigned_int_Dummy = 0;
 	__int64			 int64_dummy	= 0;
 
@@ -3631,8 +3631,8 @@ __int32	LMF_IO::WriteTDC8HPHeader_LMFV_10()
 	unsigned __int32 byte_counter	= 0;
 
 	bool			 bool_dummy = false;
-	double			 double_Dummy	= 0.;
-	__int32			 int_Dummy		= 0;
+//	double			 double_Dummy	= 0.;
+//	__int32			 int_Dummy		= 0;
 	unsigned __int32 unsigned_int_Dummy = 0;
 	__int64			 int64_dummy	= 0;
 
@@ -3785,7 +3785,7 @@ __int32	LMF_IO::WriteHM1Header()
 {
 	unsigned __int32 byte_counter;
 	byte_counter = 0;
-	__int32 int_Dummy = 0;
+//	__int32 int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -3940,9 +3940,9 @@ bool LMF_IO::OpenOutputLMF(std::string LMF_Filename)
 bool LMF_IO::OpenOutputLMF(__int8 * LMF_Filename)
 /////////////////////////////////////////////////////////////////
 {
-	double				double_Dummy = 0.;
-	unsigned __int32	unsigned_int_Dummy = 0;
-	__int32				int_Dummy = 0;
+//	double				double_Dummy = 0.;
+//	unsigned __int32	unsigned_int_Dummy = 0;
+//	__int32				int_Dummy = 0;
 
 	if (OutputFileIsOpen) {
 		errorflag = 12; // file is already open
@@ -4891,7 +4891,7 @@ __int32 LMF_IO::PCIGetTDC_TDC8HP_25psGroupMode(unsigned __int64 &ref_ui64TDC8HPA
 			unsigned __int64 ui64_tempR_LevelInfo = n!=0 ? ui64LevelInfo << (64-n) : 0;
 			ui64_tempR_LevelInfo = n!=0 ? ui64_tempR_LevelInfo >> (64-n) : 0;
 
-			unsigned __int64 old = ui64LevelInfo;
+//			unsigned __int64 old = ui64LevelInfo;
 			ui64LevelInfo = ui64_tempL_LevelInfo | ui64_tempR_LevelInfo | ui64_temp_LevelInfo;
 
 			continue;
