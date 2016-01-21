@@ -1,5 +1,6 @@
 #ifndef _LMF_IO_
-	#define _LMF_IO_
+#define _LMF_IO_
+
 #include "fstream"
 //#include "stdio.h"
 #include "time.h"

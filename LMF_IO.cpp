@@ -1,5 +1,5 @@
-		#define WINVER 0x0501
-#pragma warning(disable : 4996)
+#define WINVER 0x0501
+//#pragma warning(disable : 4996)
 
 #include "LMF_IO.h"
 
@@ -5795,6 +5795,7 @@ unsigned __int64 LMF_IO::Getuint64TimeStamp()
 	}
 	return ui64_timestamp;
 }
+
 
 
 
