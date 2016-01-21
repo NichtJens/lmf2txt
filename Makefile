@@ -3,8 +3,8 @@ OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 HEADERS = $(wildcard *.h)
 CC = g++
 LIBS = #-lm
-CFLAGS = -g -O0 #for debug symbols
-#CFLAGS = -O2 #for optimization
+#CFLAGS = -g -O0 #for debug symbols
+CFLAGS = -O2 #for optimization
 CFLAGS += -Wall -Werror
 
 
