@@ -179,7 +179,7 @@ public:
 
 	void read(__int8* string,__int32 length_bytes) {
 		unsigned __int32 read_bytes = (unsigned __int32)(fread(string,1,length_bytes,file));
-		if (read_bytes != length_bytes) {
+		if (read_bytes != (unsigned)length_bytes) {
 			error = 1;
 			if (feof(file)) eof = true;
 		}
@@ -188,7 +188,7 @@ public:
 
 	void read(unsigned __int32 * dest,__int32 length_bytes) {
 		unsigned __int32 read_bytes = (unsigned __int32)(fread(dest,1,length_bytes,file));
-		if (read_bytes != length_bytes) {
+		if (read_bytes != (unsigned)length_bytes) {
 			error = 1;
 			if (feof(file)) eof = true;
 		}
