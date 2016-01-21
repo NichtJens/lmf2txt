@@ -466,9 +466,9 @@ void LMF_IO::Initialize()
 		fADC8.firmware_version[mod]	= 0;
 		fADC8.serial_number[mod]		= 0;
 		for (__int32 ch = 0;ch<8;ch++) {
-			fADC8.GND_level[mod][ch];
-			fADC8.iThreshold_GT[mod][ch];
-			fADC8.iThreshold_LT[mod][ch];
+			fADC8.GND_level[mod][ch] = 0;
+			fADC8.iThreshold_GT[mod][ch] = 0;
+			fADC8.iThreshold_LT[mod][ch] = 0;
 		}
 		fADC8.iChannelMode [mod][0] = fADC8.iChannelMode [mod][1] = 0;
 		fADC8.iSynchronMode[mod][0] = fADC8.iSynchronMode[mod][1] = 0;
@@ -6123,13 +6123,14 @@ LMF_IO * LMF_IO::Clone()
 		clone->fADC8.firmware_version[m]	= this->fADC8.firmware_version[m];
 		clone->fADC8.serial_number[m]		= this->fADC8.serial_number[m];
 		for (__int32 adc = 0;adc<2;adc++) {
-			clone->fADC8.dSyncTimeOffset[m][adc];
-			clone->fADC8.iChannelMode[m][adc]; // 0 = 1.25Gs, 1 = 2.5Gs, 2 = 5Gs
-			clone->fADC8.iThreshold_GT[m][m];
-			clone->fADC8.iThreshold_LT[m][m];
-			clone->fADC8.iSynchronMode [m][adc];
+			clone->fADC8.dSyncTimeOffset[m][adc]	=	this->fADC8.dSyncTimeOffset[m][adc];
+			clone->fADC8.iChannelMode[m][adc]		=	this->fADC8.iChannelMode[m][adc]; // 0 = 1.25Gs, 1 = 2.5Gs, 2 = 5Gs
+			clone->fADC8.iThreshold_GT[m][m]		=	this->fADC8.iThreshold_GT[m][m];
+			clone->fADC8.iThreshold_LT[m][m]		=	this->fADC8.iThreshold_LT[m][m];
+			clone->fADC8.iSynchronMode [m][adc]		=	this->fADC8.iSynchronMode [m][adc];
 		}
-		for (__int32 ch = 0;ch<2;ch++) clone->fADC8.GND_level[m][ch];
+		for (__int32 ch = 0;ch<2;ch++)
+			clone->fADC8.GND_level[m][ch] = this->fADC8.GND_level[m][ch];
 	}
 
 
