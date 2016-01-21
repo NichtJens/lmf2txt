@@ -5,7 +5,7 @@ CC = g++
 LIBS = #-lm
 CFLAGS = -g -O0 #for debug symbols
 #CFLAGS = -O2 #for optimization
-CFLAGS += #-Wall -Werror
+CFLAGS += -Wall -Werror
 
 
 
