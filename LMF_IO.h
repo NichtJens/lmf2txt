@@ -3,26 +3,36 @@
 
 #include "fstream"
 //#include "stdio.h"
-#include "time.h"
+//#include "time.h"
 
-#define LINUX
 
-#ifdef LINUX
+#ifdef __linux__
+	#pragma message "Compile for Linux"
+#endif
+
+#ifdef _WIN32
+	#pragma message "Compile for Windows"
+#endif
+
+
+#ifdef __linux__
 	#include "string.h"
+
 	#define _fseeki64 fseeko
 	#define _ftelli64 ftello
 
-	#ifndef __int32_IS_DEFINED
-		#define __int32_IS_DEFINED
+	#ifndef __ints_ARE_DEFINED
+		#define __ints_ARE_DEFINED
+		#define __int64 long long
 		#define __int32 int
 		#define __int16 short
-		#define __int64 long long
 		#define __int8 char
 	#endif
 #endif
 
-#ifndef LINUX
-#pragma warning(disable : 4996)
+#ifdef _WIN32
+	#pragma warning(disable : 4996)
+	#define WINVER 0x0501
 #endif
 
 
@@ -816,4 +826,5 @@ private:
 
 	unsigned __int32	* CAMAC_Data;
 };
+
 #endif

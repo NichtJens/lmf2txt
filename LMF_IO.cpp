@@ -1,15 +1,12 @@
-#define WINVER 0x0501
-//#pragma warning(disable : 4996)
-
 #include "LMF_IO.h"
 
-
 #define LMF_IO_CLASS_VERSION (2016)
-
 
 #define DAQ_SOURCE_CODE		0x80000000
 #define DAN_SOURCE_CODE		0x40000000
 #define CCF_HISTORY_CODE	0x20000000
+
+#define INT_MIN_ (-2147483647-1)
 
 
 
@@ -51,11 +48,6 @@ void MyFILE::seek_to_end()
 }
 */
 
-
-
-
-
-#define INT_MIN_ (-2147483647-1)
 
 
 
@@ -4264,7 +4256,7 @@ void LMF_IO::WriteEventHeader(unsigned __int64 timestamp, unsigned __int32 cnt[]
 		HeaderLength = timestamp_format_output*sizeof(__int32) + 2*sizeof(__int64);	// +2 for HeaderLength itself, +2 for EventCounter (size in __int32)
 		for(__int32 iCount=0;iCount<number_of_channels_output;++iCount) HeaderLength += cnt[iCount]*sizeof(__int32);
 		HeaderLength += number_of_channels_output*sizeof(__int16);
-#ifdef LINUX
+#ifdef __linux__
 		HeaderLength = (HeaderLength & 0x00ffffffffffffffLL) | 0xff00000000000000LL;	// set 0xff in bits 63..56 as EventMarker
 #else
 		HeaderLength = (HeaderLength & 0x00ffffffffffffff) | 0xff00000000000000;	// set 0xff in bits 63..56 as EventMarker
@@ -5082,7 +5074,7 @@ bool LMF_IO::ReadNextEvent()
 			*input_lmf >> HPTDC_event_length;
 			if (input_lmf->error) {if (input_lmf->eof) this->errorflag = 18; else this->errorflag = 1; return false;}
 
-#ifdef LINUX
+#ifdef __linux__
 			if((HPTDC_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
 			if((HPTDC_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -5091,7 +5083,7 @@ bool LMF_IO::ReadNextEvent()
 				return false;
 			}
 
-#ifdef LINUX
+#ifdef __linux__
 			HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffffLL;
 #else
 			HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffff;
@@ -5110,7 +5102,7 @@ bool LMF_IO::ReadNextEvent()
 			*input_lmf >> TDC8PCI2_event_length;
 			if (input_lmf->error) {if (input_lmf->eof) this->errorflag = 18; else this->errorflag = 1; return false;}
 
-#ifdef LINUX
+#ifdef __linux__
 			if((TDC8PCI2_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
 			if((TDC8PCI2_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -5119,7 +5111,7 @@ bool LMF_IO::ReadNextEvent()
 				return false;
 			}
 
-#ifdef LINUX
+#ifdef __linux__
 			TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffffLL;
 #else
 			TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffff;
@@ -5135,7 +5127,7 @@ bool LMF_IO::ReadNextEvent()
 			*input_lmf >> event_length;
 			if (input_lmf->error) {if (input_lmf->eof) this->errorflag = 18; else this->errorflag = 1; return false;}
 
-#ifdef LINUX
+#ifdef __linux__
 			if((event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 				this->errorflag = 2;
 				return false;

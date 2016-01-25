@@ -1,13 +1,15 @@
-#ifndef _WIN32_WINNT            // Specifies that the minimum required platform is Windows Vista.
-#define _WIN32_WINNT 0x0501     // Change this to the appropriate value to target other versions of Windows.
+#ifdef _WIN32
+	#ifndef _WIN32_WINNT			// Specifies that the minimum required platform is Windows Vista.
+		#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
+	#endif
 #endif
 
 
 //#include "conio.h"
 #include "LMF_IO.h"
 
-#define NUM_CHANNELS 80
-#define NUM_IONS 200
+#define NUM_CHANNELS	80
+#define NUM_IONS		200
 
 
 
