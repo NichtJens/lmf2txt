@@ -4893,7 +4893,7 @@ __int32 LMF_IO::PCIGetTDC_TDC8HP_25psGroupMode(unsigned __int64 &ref_ui64TDC8HPA
 			unsigned __int32 lTDCData = (ui32DataWord&0x00FFFFFF);
 			if(lTDCData & 0x00800000)				// detect 24 bit signed flag
 				lTDCData |= 0xff000000;				// if detected extend negative value to 32 bit
-			if(!this->TDC8HP.VHR_25ps)								// correct for 100ps if nessesary
+			if(!this->TDC8HP.VHR_25ps)				// correct for 100ps if necessary
 				lTDCData >>= 2;
 
 			ucTDCChannel = (unsigned __int8)((ui32DataWord&0x3F000000)>>24);		// extract channel information
@@ -5533,12 +5533,10 @@ bool LMF_IO::ReadNextCAMACEvent()
 void LMF_IO::GetCAMACArray(unsigned __int32 data[])
 /////////////////////////////////////////////
 {
-	unsigned __int32 i;
-
 	if (must_read_first) {
 		if (!ReadNextCAMACEvent()) return;
 	}
-	for (i=0;i<Numberofcoordinates - timestamp_format * 2;++i) data[i] = CAMAC_Data[i];
+	for (__int32 i=0;i<Numberofcoordinates - timestamp_format * 2;++i) data[i] = CAMAC_Data[i];
 }
 
 
