@@ -5536,7 +5536,7 @@ void LMF_IO::GetCAMACArray(unsigned __int32 data[])
 	if (must_read_first) {
 		if (!ReadNextCAMACEvent()) return;
 	}
-	for (__int32 i=0;i<Numberofcoordinates - timestamp_format * 2;++i) data[i] = CAMAC_Data[i];
+	for (unsigned __int32 i=0;i<Numberofcoordinates - timestamp_format * 2;++i) data[i] = CAMAC_Data[i];
 }
 
 
