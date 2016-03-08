@@ -3,7 +3,7 @@
 
 #include "fstream"
 //#include "stdio.h"
-//#include "time.h"
+#include "time.h"
 
 
 #ifdef __linux__
