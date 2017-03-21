@@ -326,7 +326,7 @@ void LMF_IO::Initialize()
 	TDC8HP.exotic_file_type = 0;
 	User_header_size = 0;
 	TDC8HP.UserHeaderVersion = 7; // 4 = Cobold 2008 first release in 2008
-	                              // 5 = Cobold 2008 R2 in August 2009
+								  // 5 = Cobold 2008 R2 in August 2009
 								  // 6 = Cobold 2009?
 								  // 7 = Cobold 2011 R1 + R2
 
@@ -1445,10 +1445,10 @@ bool LMF_IO::ReadNextfADC4packet(ndigo_packet * packet, bool &bEnd_of_group_dete
 		}
 
 		if (   packet->type != CRONO_PACKET_TYPE_16_BIT_SIGNED
-		    && packet->type != CRONO_PACKET_TYPE_TDC_RISING
-		    && packet->type != CRONO_PACKET_TYPE_TDC_FALLING
-		    && packet->type != CRONO_PACKET_TYPE_TDC_DATA
-		    && packet->type != CRONO_PACKET_TYPE_TIMESTAMP_ONLY) {
+			&& packet->type != CRONO_PACKET_TYPE_TDC_RISING
+			&& packet->type != CRONO_PACKET_TYPE_TDC_FALLING
+			&& packet->type != CRONO_PACKET_TYPE_TDC_DATA
+			&& packet->type != CRONO_PACKET_TYPE_TIMESTAMP_ONLY) {
 					continue;
 		}
 

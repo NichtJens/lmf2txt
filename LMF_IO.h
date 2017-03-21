@@ -564,7 +564,7 @@ class LMF_IO
 public:
 
 	LMF_IO(__int32 Number_of_Channels, __int32 Number_of_Hits);
-    ~LMF_IO();
+	~LMF_IO();
 
 	static __int32			GetVersionNumber();
 	bool			OpenInputLMF(__int8* Filename);
