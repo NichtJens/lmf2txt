@@ -82,7 +82,7 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file)
 	unsigned __int16 wLength;
 	unsigned __int8  bLength;
 
-	__int32 nCharSize = sizeof(__int8);
+//	__int32 nCharSize = sizeof(__int8);
 
 	// First, try to read a one-byte length
 	in_file >> bLength;
@@ -94,8 +94,8 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file)
 	in_file >> wLength;
 	if (wLength == 0xfffe)
 	{
-		// Unicode string.  Start over at 1-byte length
-		nCharSize = sizeof(wchar_t);
+//		// Unicode string.  Start over at 1-byte length
+//		nCharSize = sizeof(wchar_t);
 
 		in_file >> bLength;
 		if (bLength < 0xff)
