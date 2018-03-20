@@ -5,7 +5,7 @@
 #endif
 
 
-//#include "conio.h"
+#include <cstring>
 #include "LMF_IO.h"
 
 #define NUM_CHANNELS	80

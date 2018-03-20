@@ -1,3 +1,4 @@
+#include <cstring>
 #include "LMF_IO.h"
 
 #define LMF_IO_CLASS_VERSION (2016)

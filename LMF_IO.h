@@ -1,9 +1,8 @@
 #ifndef _LMF_IO_
 #define _LMF_IO_
 
-#include "fstream"
-//#include "stdio.h"
-#include "time.h"
+#include <fstream>
+#include <ctime>
 
 
 #ifdef __linux__
@@ -14,6 +13,9 @@
 	#pragma message "Compile for Windows"
 #endif
 
+#ifdef __APPLE__
+    #pragma message "Compile for macOS"
+#endif
 
 #ifdef __linux__
 	#include "string.h"
@@ -35,8 +37,18 @@
 	#define WINVER 0x0501
 #endif
 
+#ifdef __APPLE__
+    #define _fseeki64 fseeko
+    #define _ftelli64 ftello
 
-
+    #ifndef __ints_ARE_DEFINED
+        #define __ints_ARE_DEFINED
+        #define __int64 long long
+        #define __int32 int
+        #define __int16 short
+        #define __int8 char
+    #endif
+#endif
 
 
 #define CRONO_OK 0
