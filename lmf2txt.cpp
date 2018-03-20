@@ -1,19 +1,18 @@
-#ifdef _WIN32
-#ifndef _WIN32_WINNT			// Specifies that the minimum required platform is Windows Vista.
-#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
-#endif
+#ifndef _WIN32_WINNT            // Specifies that the minimum required platform is Windows Vista.
+#define _WIN32_WINNT 0x0501     // Change this to the appropriate value to target other versions of Windows.
 #endif
 
 
+//#include "conio.h"
 #include "LMF_IO.h"
 
-#define NUM_CHANNELS    80
-#define NUM_IONS        200
+
+#define NUM_CHANNELS 80
+#define NUM_IONS 100
 
 
 #define FPRINT fprintf(ascii_outputfile_handle,
 //#define FPRINT if (flag) printf(
-
 
 
 int main(int argc, char *argv[]) {
@@ -47,7 +46,7 @@ int main(int argc, char *argv[]) {
 
     }
 
-    strcpy(LMF_Filename, (char *) argv[1]);
+    sprintf(LMF_Filename, (char *) argv[1]);
     unsigned int i, j;
     unsigned int number_of_hits[NUM_CHANNELS];
     memset(number_of_hits, 0, NUM_CHANNELS * 4);
@@ -57,6 +56,9 @@ int main(int argc, char *argv[]) {
     LMF_IO *LMF = new LMF_IO(NUM_CHANNELS, NUM_IONS);
 
     if (!LMF->OpenInputLMF(LMF_Filename)) {
+        printf("Error %i: %s\n\n", LMF->errorflag, LMF->error_text[LMF->errorflag]);
+        printf("press a key to exit\n");
+//        while (!_kbhit());
         return false;
     }
 
@@ -66,7 +68,7 @@ int main(int argc, char *argv[]) {
     FILE *ascii_outputfile_handle = fopen(ascii_output_filename.c_str(), "wt");
 
 
-//	bool flag = false;
+    bool flag = false;
 
 // Print parts of the header information:
 // ---------------------------------------
@@ -83,7 +85,7 @@ int main(int argc, char *argv[]) {
 
     FPRINT "Timestamp info = %i\n", LMF->timestamp_format);
     if (LMF->common_mode == 0) FPRINT "Common start\n"); else FPRINT "Common stop\n");
-    FPRINT "Number of events = %lli\n", LMF->uint64_Numberofevents);
+    FPRINT "Number of events = %I64i\n", LMF->uint64_Numberofevents);
     FPRINT "Data format = %i\n", LMF->data_format_in_userheader);
     FPRINT "DAQ_ID = 0x%x\n", LMF->DAQ_ID);
 
@@ -94,6 +96,13 @@ int main(int argc, char *argv[]) {
         FPRINT "Trigger dead time = %lf ns\n", LMF->TDC8HP.TriggerDeadTime_p68);
         FPRINT "Group range start = %lf ns\n", LMF->TDC8HP.GroupRangeStart_p69);
         FPRINT "Group range end = %lf ns\n", LMF->TDC8HP.GroupRangeEnd_p70);
+        for (__int32 i = 0; i < LMF->TDC8HP.Number_of_TDCs; i++) {
+            FPRINT "TDC %i of %i serial = %i.%i\n", i + 1, LMF->TDC8HP.Number_of_TDCs,
+                   LMF->TDC8HP.TDC_info[i]->serialNumber >> 24, LMF->TDC8HP.TDC_info[i]->serialNumber & 0xffffff);
+            FPRINT "TDC %i of %i binsize = %lg ps\n", i + 1, LMF->TDC8HP.Number_of_TDCs,
+                   LMF->TDC8HP.TDC_info[i]->resolution * 1.e12);
+        }
+
     }
 
     FPRINT "Starttime: %s", ctime(&LMF->Starttime));
@@ -110,7 +119,7 @@ int main(int argc, char *argv[]) {
 // ---------------------------------------
     while (true) {
         if (LMF->ReadNextEvent()) {
-            FPRINT "------- #%llu -------\n", LMF->GetEventNumber());
+            FPRINT "------- #%i -------\n", LMF->GetEventNumber());
             double new_timestamp = LMF->GetDoubleTimeStamp();
             if (first_timestamp == 0.) first_timestamp = new_timestamp;
             new_timestamp -= first_timestamp;
@@ -149,15 +158,23 @@ int main(int argc, char *argv[]) {
                     }
                 FPRINT "\n");
             }
-            FPRINT "Levelinfo: %llx\n", LMF->GetLastLevelInfo());
+            FPRINT "Levelinfo: %I64x\n", LMF->GetLastLevelInfo());
+/*
+			for (__int32 i=0;i<32;i+=2) {
+				char c;
+				if (LMF->changed_mask_read & 0x1) c='*'; else c=' '; LMF->changed_mask_read >>=1;
+				FPRINT"p%i=%g%c;",i+901 ,LMF->Parameter[901+i],c);
+				if (LMF->changed_mask_read & 0x1) c='*'; else c=' '; LMF->changed_mask_read >>=1;
+				FPRINT" \tp%i=%g%c\n",i+901+1,LMF->Parameter[901+i+1],c);
+			}*/
             FPRINT "\n");
         }
 
-//		if (LMF->GetEventNumber()%50000 == 0) {
-//			__int8 c;
-//			while (_kbhit()) c = _getch();
-//			if (c == 'q') break;
-//		}
+        if (LMF->GetEventNumber() % 50000 == 0) {
+            __int8 c;
+//            while (_kbhit()) c = _getch();
+            if (c == 'q') break;
+        }
 
         if (LMF->errorflag) break;
         if (LMF->GetEventNumber() > 100 && only_100_events_flag) break;

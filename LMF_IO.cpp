@@ -1,13 +1,17 @@
 #include "LMF_IO.h"
 
 
-#define LMF_IO_CLASS_VERSION (2016)
+#if defined(WIN32) || defined(WIN64)
+#define WINVER 0x0501
+#pragma warning(disable : 4996)
+#endif
+
+
+#define LMF_IO_CLASS_VERSION (2018)
 
 #define DAQ_SOURCE_CODE        0x80000000
 #define DAN_SOURCE_CODE        0x40000000
 #define CCF_HISTORY_CODE    0x20000000
-
-#define INT_MIN_ (-2147483647-1)
 
 
 void MyFILE::seek(unsigned __int64 pos) {
@@ -38,6 +42,8 @@ void MyFILE::seek(unsigned __int64 pos) {
 }
 
 
+
+
 /*
 void MyFILE::seek_to_end()
 {
@@ -47,6 +53,9 @@ void MyFILE::seek_to_end()
 
 
 
+
+
+#define INT_MIN_ (-2147483647-1)
 
 
 void LMF_IO::write_times(MyFILE *out_file, time_t _Starttime, time_t _Stoptime) {
@@ -79,7 +88,7 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file) {
     unsigned __int16 wLength;
     unsigned __int8 bLength;
 
-//	__int32 nCharSize = sizeof(__int8);
+    __int32 nCharSize = sizeof(__int8);
 
     // First, try to read a one-byte length
     in_file >> bLength;
@@ -90,8 +99,8 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file) {
     // Try a two-byte length
     in_file >> wLength;
     if (wLength == 0xfffe) {
-//		// Unicode string.  Start over at 1-byte length
-//		nCharSize = sizeof(wchar_t);
+        // Unicode string.  Start over at 1-byte length
+        nCharSize = sizeof(wchar_t);
 
         in_file >> bLength;
         if (bLength < 0xff)
@@ -122,6 +131,8 @@ void Read_CString_as_StdString(MyFILE &in_file, std::string &stdstring) {
     in_file.read(temp_string, length);
     temp_string[length] = 0;
     stdstring = temp_string;
+    delete[] temp_string;
+    temp_string = 0;
 }
 
 
@@ -301,6 +312,14 @@ LMF_IO::~LMF_IO()
         DAN_source_strings_output = 0;
     }
 
+    if (Parameter) {
+        delete[] Parameter;
+        Parameter = 0;
+    }
+    if (Parameter_old) {
+        delete[] Parameter_old;
+        Parameter_old = 0;
+    }
 }
 
 
@@ -308,9 +327,12 @@ LMF_IO::~LMF_IO()
 void LMF_IO::Initialize()
 /////////////////////////////////////////////////////////////////
 {
+    Parameter = new double[10000];
+    Parameter_old = new double[10000];
     uint64_LMF_EventCounter = -1;
     not_Cobold_LMF = false;
     errorflag = 0;
+    iLMFcompression = 0;
     number_of_channels2 = 0;
     InputFileIsOpen = false;
     OutputFileIsOpen = false;
@@ -344,6 +366,7 @@ void LMF_IO::Initialize()
     DAQ_ID_output = 0;
     User_header_size_output = 0;
     CAMAC_Data = 0;
+    changed_mask_read = 0;
     tdcresolution_output = -1.;
     tdcresolution = 0.;
     TDC8HP.SyncValidationChannel = 0;
@@ -399,11 +422,14 @@ void LMF_IO::Initialize()
     TDC8HP.number_of_doubles = 0;
 
     TDC8PCI2.variable_event_length = 0;
+    TDC8PCI2.i32NumberOfDAQLoops = 1;
 
     i32TDC = new __int32[num_channels * num_ions];
     us16TDC = new unsigned __int16[num_channels * num_ions];
     dTDC = new double[num_channels * num_ions];
     number_of_hits = new unsigned __int32[num_channels];
+
+    memset(number_of_hits, 0, num_channels * sizeof(__int32));
 
     TDC8HP.DMAEnable = true;
     TDC8HP.SSEEnable = false;
@@ -605,6 +631,10 @@ bool LMF_IO::OpenInputLMF(__int8 *LMF_Filename)
     __int8 byte_Dummy;
     __int32 byte_counter;
 
+    if (Parameter) memset(Parameter, 0, 10000 * sizeof(double));
+    if (Parameter_old) memset(Parameter_old, 0, 10000 * sizeof(double));
+    for (__int32 i = 901; i <= 932; i++) Parameter_old[i] = -1.e201;
+
     if (InputFileIsOpen) {
         errorflag = 3; // file is already open
         return false;
@@ -700,9 +730,9 @@ bool LMF_IO::OpenInputLMF(__int8 *LMF_Filename)
     // get CTime version:
     if (!CTime_version) {
         unsigned __int32 dummy_uint32;
-        unsigned __int64 pos = input_lmf->tell();
+        unsigned __int64 pos = (unsigned __int64) (input_lmf->tell());
         *input_lmf >> dummy_uint32;
-        if (dummy_uint32 == (unsigned) INT_MIN_ + 10) CTime_version = 2005; else CTime_version = 2003;
+        if (dummy_uint32 == INT_MIN_ + 10) CTime_version = 2005; else CTime_version = 2003;
         input_lmf->seek(pos);
     }
 
@@ -779,7 +809,7 @@ bool LMF_IO::OpenInputLMF(__int8 *LMF_Filename)
         goto L666;
     }
 
-    if ((unsigned) __int32(input_lmf->tell()) != Headersize) {
+    if (__int32(input_lmf->tell()) != __int32(Headersize)) {
         errorflag = 6;
         InputFileIsOpen = false;
         goto L666;
@@ -844,7 +874,7 @@ bool LMF_IO::OpenInputLMF(__int8 *LMF_Filename)
     if (DAQ_ID == DAQ_ID_FADC8) byte_counter += ReadfADC8Header();
     if (DAQ_ID == DAQ_ID_FADC4) byte_counter += ReadfADC4Header_up_to_v11();
 
-    if ((User_header_size != (unsigned) byte_counter) || (data_format_in_userheader != data_format_in_header)) {
+    if ((__int32(User_header_size) != byte_counter) || (data_format_in_userheader != data_format_in_header)) {
         if (!(DAQ_ID == DAQ_ID_TDC8 && this->LMF_Version == 0x8)
             &&
             !(this->LMF_Version == 7 && (DAQ_ID == DAQ_ID_HM1 || DAQ_ID == DAQ_ID_HM1_ABM) && DAQVersion == 20080507 &&
@@ -978,6 +1008,11 @@ __int32 LMF_IO::WriteTDC8PCI2Header()
         byte_counter += sizeof(__int32); // Empty Counter since last event 1st card
     }
 
+    if (LMF_Version_output >= 10) {
+        *output_lmf << TDC8PCI2.i32NumberOfDAQLoops;
+        byte_counter += sizeof(__int32);
+    }
+
     return byte_counter;
 }
 
@@ -1071,7 +1106,6 @@ __int32 LMF_IO::ReadTDC8PCI2Header()
     __int32 byte_counter;
     byte_counter = 0;
 
-
     *input_lmf >> frequency;
     byte_counter += sizeof(double);        // frequency is always 4th value
     *input_lmf >> IOaddress;
@@ -1103,7 +1137,7 @@ __int32 LMF_IO::ReadTDC8PCI2Header()
 
     if (DAQVersion >= 20080507) {
         if (LMF_Version >= 0x8 && data_format_in_userheader == -1) TDC8PCI2.variable_event_length = 1;
-        if (LMF_Version >= 0x9) {
+        if (LMF_Version >= 0x8) {
             *input_lmf >> number_of_DAQ_source_strings;
             byte_counter += sizeof(__int32);
             DAQ_source_strings = new std::string *[number_of_DAQ_source_strings];
@@ -1172,7 +1206,7 @@ __int32 LMF_IO::ReadTDC8PCI2Header()
     *input_lmf >> module_2nd;
     byte_counter += sizeof(__int32);        // indicator for 2nd module data
 
-    if ((unsigned) byte_counter == User_header_size - 12) return byte_counter;
+    if (byte_counter == __int32(User_header_size - 12)) return byte_counter;
 
     if (DAQVersion >= 20020408 && TDC8PCI2.use_normal_method) {
         *input_lmf >> TDC8PCI2.GateDelay_1st_card;
@@ -1202,7 +1236,12 @@ __int32 LMF_IO::ReadTDC8PCI2Header()
 	END_CATCH
 */
 
-    if ((unsigned) byte_counter != User_header_size - 12 && DAQVersion < 20080507) {
+    if (LMF_Version >= 10) {
+        *input_lmf >> TDC8PCI2.i32NumberOfDAQLoops;
+        byte_counter += sizeof(__int32);
+    }
+
+    if (byte_counter != __int32(User_header_size - 12) && DAQVersion < 20080507) {
         if (!TDC8PCI2.use_normal_method) return 0;
         TDC8PCI2.use_normal_method = false;
         input_lmf->seek(StartPosition);
@@ -1277,9 +1316,9 @@ __int32 LMF_IO::ReadCAMACHeader()
 __int32 LMF_IO::Read2TDC8PCI2Header()
 /////////////////////////////////////////////////////////////////
 {
-    unsigned __int64 StartPosition = 0;
-    __int32 old_byte_counter = 0;
-    bool desperate_mode = false;
+    unsigned __int64 StartPosition;
+    __int32 old_byte_counter;
+    bool desperate_mode;
 
     TDC8PCI2.variable_event_length = 0;
     __int32 byte_counter;
@@ -1445,7 +1484,7 @@ __int32 LMF_IO::Read2TDC8PCI2Header()
         byte_counter += sizeof(__int32); // trigger at falling edge
         *input_lmf >> iDummy;
         byte_counter += sizeof(__int32); // trigger at rising edge
-        if ((unsigned) byte_counter < User_header_size - 20) {
+        if (byte_counter < __int32(User_header_size) - 20) {
             *input_lmf >> iDummy;
             byte_counter += sizeof(__int32);
             *input_lmf >> iDummy;
@@ -1561,7 +1600,7 @@ __int32 LMF_IO::Read2TDC8PCI2Header()
     L200:
 
     if (DAQVersion < 20080507) {
-        if ((unsigned) byte_counter != User_header_size - 12) {
+        if (byte_counter != __int32(User_header_size - 12)) {
             if (desperate_mode) return 0;
             if (!TDC8PCI2.use_normal_method_2nd_card) {
                 desperate_mode = true;
@@ -1573,7 +1612,7 @@ __int32 LMF_IO::Read2TDC8PCI2Header()
     }
 
     if (DAQVersion >= 20080507 && DAQVersion < 20110208) {
-        if ((unsigned) byte_counter != User_header_size - 20) {
+        if (byte_counter != __int32(User_header_size - 20)) {
             byte_counter = -1000; // XXX (this line is okay. I have put the XXX just to bring it to attention)
         }
     }
@@ -1632,8 +1671,8 @@ bool LMF_IO::ReadNextfADC4packet(ndigo_packet *packet, bool &bEnd_of_group_detec
             input_lmf->read((char *) i16buffer, length * sizeof(__int16));
             if (errorflag) return false;
             for (unsigned __int32 k = 0; k < (packet->length * 4 - length); k++) {
-                __int64 dummy64;
-                *input_lmf >> dummy64;
+                __int16 dummy16;
+                *input_lmf >> dummy16;
                 if (errorflag) return false;
             }
             packet->length = length >> 2;
@@ -1649,6 +1688,23 @@ bool LMF_IO::ReadNextfADC4packet(ndigo_packet *packet, bool &bEnd_of_group_detec
 
         if (fADC4.packet_count > 0) return true;
     }
+
+
+    if (this->LMF_Version > 12) {
+        unsigned __int32 changed_mask;
+        *input_lmf >> changed_mask;
+        if (changed_mask) {
+            for (__int32 i = 0; i < 32; i++) {
+                if (changed_mask & 0x1) {
+                    double double_temp;
+                    *input_lmf >> double_temp;
+                    Parameter[901 + i] = double_temp;
+                }
+                changed_mask >>= 1;
+            }
+        }
+    }
+
 
     bEnd_of_group_detected = true;
     number_of_bytes_in_PostEventData = 0;
@@ -2193,13 +2249,25 @@ __int32 LMF_IO::ReadfADC8_header_LMFversion10() {
         }
     }
 
+    __int32 int_dummy;
     fADC8.bReadCustomData = false;
     if (counter < fADC8.number_of_int32s) {
+        *input_lmf >> int_dummy;
+        byte_counter += sizeof(__int32);
+        fADC8.bReadCustomData = int_dummy ? true : false;
+        counter++;
+    }
+    iLMFcompression = 0;
+    if (counter < fADC8.number_of_int32s) {
+        *input_lmf >> iLMFcompression;
+        byte_counter += sizeof(__int32);
+        counter++;
+    }
+    if (counter < fADC8.number_of_int32s) {
         for (__int32 i = counter; i < fADC8.number_of_int32s; ++i) {
-            __int32 int_dummy;
             *input_lmf >> int_dummy;
             byte_counter += sizeof(__int32);
-            fADC8.bReadCustomData = int_dummy ? true : false;
+            counter++;
         }
     }
 
@@ -2237,7 +2305,6 @@ __int32 LMF_IO::ReadfADC8_header_LMFversion10() {
         byte_counter += sizeof(double);
     }
 
-    __int32 int_dummy;
     *input_lmf >> int_dummy;
     byte_counter += sizeof(__int32);
     if (int_dummy != 123456789) return 0;
@@ -2628,6 +2695,52 @@ __int32 LMF_IO::ReadfADC4Header_up_to_v11() {
             byte_counter += sizeof(double);
             *input_lmf >> fADC4.ndigo_parameters[i].version;
             byte_counter += sizeof(__int32);
+
+            if (DAQVersion >= 20140617) { // DAQ_VERSION13FADC4
+                ndigo_static_info *ndsi = &fADC4.ndigo_info[i];
+                *input_lmf >> ndsi->size;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->version;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->board_id;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->driver_revision;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->firmware_revision;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->board_revision;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->board_configuration;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->adc_resolution;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->nominal_sample_rate;
+                byte_counter += sizeof(double);
+                *input_lmf >> ndsi->analog_bandwidth;
+                byte_counter += sizeof(double);
+                *input_lmf >> ndsi->chip_id;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->board_serial;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->flash_serial_low;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->flash_serial_high;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> ndsi->flash_valid;
+                byte_counter += sizeof(__int32);
+                *input_lmf >> i32Dummy;
+                byte_counter += sizeof(__int32);
+                ndsi->dc_coupled = (i32Dummy != 0) ? true : false;
+                *input_lmf >> ndsi->subversion_revision;
+                byte_counter += sizeof(__int32);
+                for (__int32 k = 0; k < 20; k++) {
+                    *input_lmf >> ndsi->calibration_date[k];
+                    byte_counter += sizeof(__int8);
+                }
+            } else {
+                memset(&fADC4.ndigo_info[i], 0, sizeof(ndigo_static_info));
+            }
+
         }
     } else {
         unsigned __int64 pos = input_lmf->tell();
@@ -2877,6 +2990,7 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_1_to_7(__int32 byte_counter_external)
         if (LMF_Version == 8) TDC8HP.UserHeaderVersion = 5;
         if (LMF_Version >= 9) TDC8HP.UserHeaderVersion = 6;
         if (LMF_Version >= 10) TDC8HP.UserHeaderVersion = 7;
+        if (LMF_Version >= 11) TDC8HP.UserHeaderVersion = 8;
     }
 
     if (TDC8HP.UserHeaderVersion >= 5) {
@@ -3041,12 +3155,12 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_1_to_7(__int32 byte_counter_external)
     byte_counter += TDC8HP.csDNLFile_Length;
 
     if (DAQVersion < 20080000) {
-        if ((unsigned) byte_counter == User_header_size - 12 - 4) {  // Cobold 2002 v11
+        if (byte_counter == __int32(User_header_size - 12 - 4)) {  // Cobold 2002 v11
             if (TDC8HP.UserHeaderVersion < 2) TDC8HP.UserHeaderVersion = 2;
             *input_lmf >> TDC8HP.SyncValidationChannel;
             byte_counter += sizeof(__int32);    // parameter 77-1
         }
-        if ((unsigned) byte_counter == User_header_size - 12 - 4 - 4) { // never used in official Cobold releases
+        if (byte_counter == __int32(User_header_size - 12 - 4 - 4)) { // never used in official Cobold releases
             TDC8HP.UserHeaderVersion = 3;
             *input_lmf >> TDC8HP.SyncValidationChannel;
             byte_counter += sizeof(__int32);
@@ -3173,7 +3287,7 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_1_to_7(__int32 byte_counter_external)
         *input_lmf >> double_dummy;
         byte_counter += sizeof(double);
 
-        if (!bNoTDCInfoRead && ((unsigned) (byte_counter_external + byte_counter) == User_header_size + 4)) {
+        if (!bNoTDCInfoRead && (byte_counter_external + byte_counter == __int32(User_header_size + 4))) {
             bNoTDCInfoRead = true;
             goto L200;
         }
@@ -3226,7 +3340,7 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_8_to_9()
     byte_counter += DAQ_info_Length;
 
 //	input_lmf->flush();
-//	unsigned __int64 StartPosition = input_lmf->tell();
+    //unsigned __int64 StartPosition = input_lmf->tell();
     __int32 old_byte_counter = byte_counter;
 
     byte_counter = old_byte_counter;
@@ -3516,7 +3630,7 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_10()
 
 
 //	input_lmf->flush();
-//	unsigned __int64 StartPosition = input_lmf->tell();
+    //unsigned __int64 StartPosition = input_lmf->tell();
     __int32 old_byte_counter = byte_counter;
 
     byte_counter = old_byte_counter;
@@ -3572,6 +3686,8 @@ __int32 LMF_IO::ReadTDC8HPHeader_LMFV_10()
 
     *input_lmf >> data_format_in_userheader;
     byte_counter += sizeof(__int32);    // data format (2=short integer)
+
+    if (data_format_in_userheader < -10) data_format_in_userheader = -1;
 
     bool temp_bool;
 
@@ -3852,7 +3968,7 @@ __int32 LMF_IO::ReadHM1Header()
 
     if (DAQVersion >= 20080507) HM1.use_normal_method = true;
 
-    if ((unsigned) nominalHeaderLength == User_header_size) HM1.use_normal_method = true;
+    if (nominalHeaderLength == __int32(User_header_size)) HM1.use_normal_method = true;
 
     if (DAQVersion >= 20020408 && HM1.use_normal_method) {
         *input_lmf >> LMF_Version;
@@ -4095,7 +4211,7 @@ __int32 LMF_IO::Write2TDC8PCI2Header()
 {
     unsigned __int32 byte_counter;
     byte_counter = 0;
-//	__int32 int_Dummy = 0;
+    //__int32 int_Dummy = 0;
 
     *output_lmf << frequency;
     byte_counter += sizeof(double);        // frequency is always 4th value
@@ -4215,7 +4331,7 @@ __int32 LMF_IO::WriteTDC8HPHeader_LMFV_1_to_7()
     byte_counter = 0;
     double double_Dummy = 0.;
     __int32 int_Dummy = 0;
-//	unsigned __int32 unsigned_int_Dummy = 0;
+    //unsigned __int32 unsigned_int_Dummy = 0;
 
     *output_lmf << frequency;
     byte_counter += sizeof(double);        // frequency is always 4th value
@@ -4444,8 +4560,8 @@ __int32 LMF_IO::WriteTDC8HPHeader_LMFV_8_to_9()
     unsigned __int32 byte_counter = 0;
 
     bool bool_dummy = false;
-//	double			 double_Dummy	= 0.;
-//	__int32			 int_Dummy		= 0;
+    //double			 double_Dummy	= 0.;
+    //__int32			 int_Dummy		= 0;
     unsigned __int32 unsigned_int_Dummy = 0;
     __int64 int64_dummy = 0;
 
@@ -4689,14 +4805,14 @@ __int32 LMF_IO::WriteTDC8HPHeader_LMFV_8_to_9()
 
 
 /////////////////////////////////////////////////////////////////
-__int32 LMF_IO::WriteTDC8HPHeader_LMFV_10()
+__int32 LMF_IO::WriteTDC8HPHeader_LMFV_10_to_12()
 /////////////////////////////////////////////////////////////////
 {
     unsigned __int32 byte_counter = 0;
 
     bool bool_dummy = false;
-//	double			 double_Dummy	= 0.;
-//	__int32			 int_Dummy		= 0;
+    //double			 double_Dummy	= 0.;
+    //__int32			 int_Dummy		= 0;
     unsigned __int32 unsigned_int_Dummy = 0;
     __int64 int64_dummy = 0;
 
@@ -4915,7 +5031,7 @@ __int32 LMF_IO::WriteHM1Header()
 {
     unsigned __int32 byte_counter;
     byte_counter = 0;
-//	__int32 int_Dummy = 0;
+    //__int32 int_Dummy = 0;
 
     *output_lmf << frequency;
     byte_counter += sizeof(double);        // frequency is always 4th value
@@ -5137,9 +5253,12 @@ bool LMF_IO::OpenOutputLMF(std::string LMF_Filename) {
 bool LMF_IO::OpenOutputLMF(__int8 *LMF_Filename)
 /////////////////////////////////////////////////////////////////
 {
-//	double				double_Dummy = 0.;
-//	unsigned __int32	unsigned_int_Dummy = 0;
-//	__int32				int_Dummy = 0;
+    //double				double_Dummy = 0.;
+    //unsigned __int32	unsigned_int_Dummy = 0;
+    //__int32				int_Dummy = 0;
+
+    if (Parameter_old) memset(Parameter_old, 0, 10000 * sizeof(double));
+    for (__int32 i = 901; i <= 932; i++) Parameter_old[i] = -1.e201;
 
     if (OutputFileIsOpen) {
         errorflag = 12; // file is already open
@@ -5235,7 +5354,7 @@ bool LMF_IO::OpenOutputLMF(__int8 *LMF_Filename)
 
     Headersize_output = 0;
 
-    if (DAQVersion_output == (unsigned) -1) DAQVersion_output = DAQVersion;
+    if (DAQVersion_output == -1) DAQVersion_output = DAQVersion;
 
     if (DAQVersion_output >= 20080000 && Cobold_Header_version_output == 0) Cobold_Header_version_output = 2008;
     if (Cobold_Header_version_output == 0) Cobold_Header_version_output = Cobold_Header_version;
@@ -5263,10 +5382,11 @@ bool LMF_IO::OpenOutputLMF(__int8 *LMF_Filename)
         if (max_number_of_hits2_output == -1) max_number_of_hits2_output = max_number_of_hits2;
     }
 
-    if (max_number_of_hits2_output < 0 || max_number_of_hits2_output > 100000)
+    if (max_number_of_hits2_output < __int32(0) ||
+        max_number_of_hits2_output > __int32(100000))
         max_number_of_hits2_output = max_number_of_hits_output;
 
-    if (timestamp_format_output == (unsigned) -1) timestamp_format_output = timestamp_format;
+    if (timestamp_format_output == -1) timestamp_format_output = timestamp_format;
 
     if (Numberofcoordinates_output == -2) {
         if (data_format_in_userheader_output == LM_SHORT) Numberofcoordinates_output = timestamp_format_output * 2;
@@ -5337,7 +5457,7 @@ bool LMF_IO::OpenOutputLMF(__int8 *LMF_Filename)
 
     if (LMF_Version_output == -1) {
         LMF_Version_output = LMF_Version;
-        if (LMF_Version_output == -1) LMF_Version_output = 10; // XXX if necessary: modify to latest LMF version number
+        if (LMF_Version_output == -1) LMF_Version_output = 12; // XXX if necessary: modify to latest LMF version number
     }
 
     output_byte_counter = 0;
@@ -5368,7 +5488,7 @@ bool LMF_IO::OpenOutputLMF(__int8 *LMF_Filename)
         if (this->LMF_Version_output < 8) output_byte_counter += WriteTDC8HPHeader_LMFV_1_to_7();
         if (this->LMF_Version_output >= 8 && this->LMF_Version_output <= 9)
             output_byte_counter += WriteTDC8HPHeader_LMFV_8_to_9();
-        if (this->LMF_Version_output >= 10) output_byte_counter += WriteTDC8HPHeader_LMFV_10();
+        if (this->LMF_Version_output >= 10) output_byte_counter += WriteTDC8HPHeader_LMFV_10_to_12();
     }
 
     if (DAQ_ID_output == DAQ_ID_HM1) output_byte_counter += WriteHM1Header();
@@ -5439,7 +5559,7 @@ void LMF_IO::WriteFirstHeader()
         } else *output_lmf << __int32(0);
     } else {
         number_of_CCFHistory_strings_output = 0;
-        if (Cobold_Header_version >= 2008) *output_lmf << number_of_CCFHistory_strings_output;
+        if (Cobold_Header_version_output >= 2008) *output_lmf << number_of_CCFHistory_strings_output;
     }
 
     if (DAN_source_strings_output) {
@@ -5454,7 +5574,7 @@ void LMF_IO::WriteFirstHeader()
         } else *output_lmf << __int32(0);
     } else {
         number_of_DAN_source_strings_output = 0;
-        if (Cobold_Header_version >= 2008) *output_lmf << number_of_DAN_source_strings_output;
+        if (Cobold_Header_version_output >= 2008) *output_lmf << number_of_DAN_source_strings_output;
     }
 }
 
@@ -5473,7 +5593,7 @@ void LMF_IO::WriteEventHeader(unsigned __int64 timestamp, unsigned __int32 cnt[]
         for (__int32 iCount = 0; iCount < number_of_channels_output; ++iCount)
             HeaderLength += cnt[iCount] * sizeof(__int32);
         HeaderLength += number_of_channels_output * sizeof(__int16);
-#ifdef __linux__
+#ifdef LINUX
         HeaderLength = (HeaderLength & 0x00ffffffffffffffLL) | 0xff00000000000000LL;	// set 0xff in bits 63..56 as EventMarker
 #else
         HeaderLength =
@@ -5557,6 +5677,26 @@ void LMF_IO::WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], __
         if (DAQ_ID_output == DAQ_ID_TDC8HP && this->LMF_Version_output >= 9) {
             *output_lmf << ui64LevelInfo;
         }
+
+        if (this->LMF_Version_output >= 11) {
+            unsigned __int32 changed_mask = 0;
+            //__int32 max_par_index = 932;
+            for (__int32 i = 0; i < 32; i++) {
+                if (Parameter_old[i + 901] != Parameter[i + 901]) {
+                    changed_mask += (1 << i);
+                }
+            }
+
+            *output_lmf << changed_mask;
+
+            for (__int32 i = 0; i < 32; i++) {
+                if (Parameter_old[i + 901] != Parameter[i + 901]) {
+                    *output_lmf << Parameter[i + 901];
+                    Parameter_old[i + 901] = Parameter[i + 901];
+                }
+            }
+        }
+
         if (DAQ_ID_output == DAQ_ID_TDC8HP && this->LMF_Version_output >= 10) {
             *output_lmf << number_of_bytes_in_PostEventData;
             for (__int32 i = 0; i < number_of_bytes_in_PostEventData; i++) *output_lmf << ui8_PostEventData[i];
@@ -5678,7 +5818,7 @@ void LMF_IO::WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], do
     WriteEventHeader(timestamp, cnt);
 
     __int32 i, j;
-    __int32 ii = 0;
+    __int32 ii;
     if (DAQ_ID_output != DAQ_ID_SIMPLE) {
         for (i = 0; i < number_of_channels_output; ++i) {
             __int32 hits = cnt[i];
@@ -5816,6 +5956,167 @@ void LMF_IO::WriteTDCData(double timestamp, unsigned __int32 cnt[], double *dtdc
     unsigned __int64 new_timestamp = (unsigned __int64) (timestamp * frequency + 0.001);
 
     WriteTDCData(new_timestamp, cnt, dtdc);
+
+    return;
+}
+
+
+/////////////////////////////////////////////////////////////////
+void LMF_IO::WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], __int64 *i64TDC)
+/////////////////////////////////////////////////////////////////
+{
+    unsigned __int16 dummy_uint16;
+    double dummy_double;
+    __int32 dummy_int32;
+
+    if (!output_lmf || !OutputFileIsOpen) {
+        errorflag = 10;
+        return;
+    }
+
+    ++uint64_number_of_written_events;
+
+    WriteEventHeader(timestamp, cnt);
+
+    __int32 i, j;
+    __int32 ii;
+    if (DAQ_ID_output != DAQ_ID_SIMPLE) {
+        for (i = 0; i < number_of_channels_output; ++i) {
+            __int32 hits = cnt[i];
+            if (hits > max_number_of_hits_output) hits = max_number_of_hits_output;
+            if (data_format_in_userheader_output == 2) {
+                dummy_uint16 = (unsigned __int16) (hits);
+                *output_lmf << dummy_uint16;
+                for (j = 0; j < hits; ++j) {
+                    dummy_uint16 = (unsigned __int16) (i64TDC[i * num_ions + j] + 1.e-6);
+                    *output_lmf << dummy_uint16;
+                }
+                dummy_uint16 = 0;
+                for (j = hits; j < max_number_of_hits_output; ++j) *output_lmf << dummy_uint16;
+            }
+            if (data_format_in_userheader_output == 5) {
+                dummy_double = double(hits);
+                *output_lmf << dummy_double;
+                for (j = 0; j < hits; ++j) *output_lmf << double(i64TDC[i * num_ions + j]);
+                dummy_double = 0.;
+                for (j = hits; j < max_number_of_hits_output; ++j) *output_lmf << dummy_double;
+            }
+            if (data_format_in_userheader_output == 10) {
+                dummy_int32 = __int32(hits);
+                *output_lmf << dummy_int32;
+                for (j = 0; j < hits; ++j) {
+                    if (i64TDC[i * num_ions + j] >= 0.) ii = __int32(i64TDC[i * num_ions + j] + 1.e-6);
+                    if (i64TDC[i * num_ions + j] < 0.) ii = __int32(i64TDC[i * num_ions + j] - 1.e-6);
+                    *output_lmf << ii;
+                }
+                dummy_int32 = 0;
+                for (j = hits; j < max_number_of_hits_output; ++j) *output_lmf << dummy_int32;
+            }
+            if (data_format_in_userheader_output == LM_USERDEF) {
+                dummy_uint16 = (unsigned __int16) (hits);
+                *output_lmf << dummy_uint16;
+                for (j = 0; j < hits; ++j) {
+                    if (i64TDC[i * num_ions + j] >= 0.) ii = __int32(i64TDC[i * num_ions + j] + 1.e-6);
+                    if (i64TDC[i * num_ions + j] < 0.) ii = __int32(i64TDC[i * num_ions + j] - 1.e-6);
+                    if (DAQ_ID_output != DAQ_ID_HM1 && DAQ_ID_output != DAQ_ID_TDC8 && DAQ_ID_output != DAQ_ID_2TDC8)
+                        *output_lmf << ii;
+                    else *output_lmf << (unsigned __int16) (ii);
+                }
+            }
+        }
+        if (DAQ_ID_output == DAQ_ID_TDC8HP && this->LMF_Version_output >= 9) {
+            *output_lmf << ui64LevelInfo;
+        }
+        if (DAQ_ID_output == DAQ_ID_TDC8HP && this->LMF_Version_output >= 10) {
+            *output_lmf << number_of_bytes_in_PostEventData;
+            for (__int32 i = 0; i < number_of_bytes_in_PostEventData; i++) *output_lmf << ui8_PostEventData[i];
+        }
+    }
+    if (DAQ_ID_output == DAQ_ID_2TDC8 && number_of_channels2_output > 0) {
+        for (i = number_of_channels_output; i < number_of_channels_output + number_of_channels2_output; ++i) {
+            __int32 hits = cnt[i];
+            if (hits > max_number_of_hits2_output) hits = max_number_of_hits2_output;
+            if (data_format_in_userheader_output == 2) {
+                dummy_uint16 = (unsigned __int16) (hits);
+                *output_lmf << dummy_uint16;
+                for (j = 0; j < hits; ++j) {
+                    dummy_uint16 = (unsigned __int16) (i64TDC[i * num_ions + j] + 1.e-6);
+                    *output_lmf << dummy_uint16;
+                }
+                dummy_uint16 = 0;
+                for (j = hits; j < max_number_of_hits2_output; ++j) *output_lmf << dummy_uint16;
+            }
+            if (data_format_in_userheader_output == 5) {
+                dummy_double = double(hits);
+                *output_lmf << dummy_double;
+                for (j = 0; j < hits; ++j) *output_lmf << i64TDC[i * num_ions + j];
+                dummy_double = 0.;
+                for (j = hits; j < max_number_of_hits2_output; ++j) *output_lmf << dummy_double;
+            }
+            if (data_format_in_userheader_output == 10) {
+                *output_lmf << __int32(hits);
+                for (j = 0; j < hits; ++j) {
+                    if (i64TDC[i * num_ions + j] >= 0.) ii = __int32(i64TDC[i * num_ions + j] + 1.e-6);
+                    if (i64TDC[i * num_ions + j] < 0.) ii = __int32(i64TDC[i * num_ions + j] - 1.e-6);
+                    *output_lmf << ii;
+                }
+                dummy_int32 = 0;
+                for (j = hits; j < max_number_of_hits2_output; ++j) *output_lmf << dummy_int32;
+            }
+        }
+    }
+
+    if (DAQ_ID_output == DAQ_ID_SIMPLE) {
+        unsigned __int32 channel;
+        unsigned __int32 i;
+        i = 0;
+        for (channel = 0; channel < (unsigned __int32) number_of_channels_output; ++channel)
+            i = i + cnt[channel] + (cnt[channel] > 0 ? 1 : 0);
+        if (data_format_in_userheader_output == 2) {
+            dummy_uint16 = (unsigned __int16) i;
+            *output_lmf << dummy_uint16;
+        }
+        if (data_format_in_userheader_output == 10) *output_lmf << i;
+        if (data_format_in_userheader_output == 2) {
+            for (channel = 0; channel < (unsigned __int32) number_of_channels_output; ++channel) {
+                if (cnt[channel] > 0) {
+                    dummy_uint16 = (unsigned __int16) ((channel << 8) + cnt[channel]);
+                    *output_lmf << dummy_uint16;
+                    for (i = 0; i < cnt[channel]; ++i) {
+                        dummy_uint16 = (unsigned __int16) (i64TDC[channel * num_ions + i]);
+                        *output_lmf << dummy_uint16;
+                    }
+                }
+            }
+        }
+        if (data_format_in_userheader_output == 10) {
+            for (channel = 0; channel < (unsigned __int32) number_of_channels_output; ++channel) {
+                if (cnt[channel] > 0) {
+                    dummy_int32 = __int32((channel << 24) + cnt[channel]);
+                    *output_lmf << dummy_int32;
+                    for (i = 0; i < cnt[channel]; ++i) {
+                        dummy_int32 = __int32(i64TDC[channel * num_ions + i]);
+                        *output_lmf << dummy_int32;
+                    }
+                }
+            }
+        }
+    } // end if (DAQ_ID_output == DAQ_ID_SIMPLE)
+
+    return;
+}
+
+/////////////////////////////////////////////////////////////////
+void LMF_IO::WriteTDCData(double timestamp, unsigned __int32 cnt[], __int64 *i64tdc)
+/////////////////////////////////////////////////////////////////
+{
+    if (!output_lmf || !OutputFileIsOpen) {
+        errorflag = 10;
+        return;
+    }
+    unsigned __int64 new_timestamp = (unsigned __int64) (timestamp * frequency + 0.001);
+
+    WriteTDCData(new_timestamp, cnt, i64tdc);
 
     return;
 }
@@ -6042,7 +6343,7 @@ bool LMF_IO::SeekToEventNumber(unsigned __int64 target_number)
 
     if (target_number < 0) return false;
     if (target_number > uint64_Numberofevents) return false;
-    __int32 eventsize = 0;
+    __int32 eventsize;
     if (data_format_in_userheader == 2) eventsize = 2 * Numberofcoordinates;
     if (data_format_in_userheader == 5) eventsize = 8 * Numberofcoordinates;
     if (data_format_in_userheader == 10) eventsize = 4 * Numberofcoordinates;
@@ -6101,14 +6402,14 @@ __int32 LMF_IO::PCIGetTDC_TDC8HP_25psGroupMode(unsigned __int64 &ref_ui64TDC8HPA
             unsigned __int64 ui64_tempR_LevelInfo = n != 0 ? ui64LevelInfo << (64 - n) : 0;
             ui64_tempR_LevelInfo = n != 0 ? ui64_tempR_LevelInfo >> (64 - n) : 0;
 
-//			unsigned __int64 old = ui64LevelInfo;
+            //unsigned __int64 old = ui64LevelInfo;
             ui64LevelInfo = ui64_tempL_LevelInfo | ui64_tempR_LevelInfo | ui64_temp_LevelInfo;
 
             continue;
         }
         if ((ui32DataWord & 0xC0000000) > 0x40000000)        // valid data only if rising or falling trigger indicated
         {
-            unsigned __int32 lTDCData = (ui32DataWord & 0x00FFFFFF);
+            __int32 lTDCData = (ui32DataWord & 0x00FFFFFF);
             if (lTDCData & 0x00800000)                // detect 24 bit signed flag
                 lTDCData |= 0xff000000;                // if detected extend negative value to 32 bit
             if (!this->TDC8HP.VHR_25ps)                // correct for 100ps if necessary
@@ -6116,33 +6417,41 @@ __int32 LMF_IO::PCIGetTDC_TDC8HP_25psGroupMode(unsigned __int64 &ref_ui64TDC8HPA
 
             ucTDCChannel = (unsigned __int8) ((ui32DataWord & 0x3F000000) >> 24);        // extract channel information
             // calculate TDC channel to _TDC channel
-            if ((ucTDCChannel >= 42) && (ucTDCChannel <= 49))
-                ucTDCChannel -= 25;
-            else if ((ucTDCChannel >= 21) && (ucTDCChannel <= 28))
+            bool valid = false;
+            if ((ucTDCChannel > 41) && (ucTDCChannel < 51)) {
+                ucTDCChannel -= 24;
+                valid = true;
+            } else if ((ucTDCChannel > 20) && (ucTDCChannel < 30)) {
                 ucTDCChannel -= 12;
-
-            bool bIsFalling = true;
-            if ((ui32DataWord & 0xC0000000) == 0xC0000000) bIsFalling = false;
-
-            if (!bIsFalling) {
-                ucTDCChannel += TDC8HP.channel_offset_for_rising_transitions;
+                valid = true;
+            } else if ((ucTDCChannel >= 0) && (ucTDCChannel < 9)) {
+                valid = true;
             }
 
-            if (ucTDCChannel < num_channels)    // if detected channel fits into TDC array then sort
-            {
-                ++number_of_hits[ucTDCChannel];
-                __int32 cnt = number_of_hits[ucTDCChannel];
-                // increase Hit Counter;
+            if (valid) {
+                bool bIsFalling = true;
+                if ((ui32DataWord & 0xC0000000) == 0xC0000000) bIsFalling = false;
 
-                // test for oversized Hits
-                if (cnt > num_ions) {
-                    --number_of_hits[ucTDCChannel];
-                    --cnt;
-                } else
-                    // if Hit # ok then store it
-                    i32TDC[ucTDCChannel * num_ions + cnt - 1] = lTDCData;
+                if (!bIsFalling) {
+                    ucTDCChannel += TDC8HP.channel_offset_for_rising_transitions;
+                }
 
-                bOKFlag = true;
+                if (ucTDCChannel < num_channels)    // if detected channel fits into TDC array then sort
+                {
+                    ++number_of_hits[ucTDCChannel];
+                    __int32 cnt = number_of_hits[ucTDCChannel];
+                    // increase Hit Counter;
+
+                    // test for oversized Hits
+                    if (cnt > num_ions) {
+                        --number_of_hits[ucTDCChannel];
+                        --cnt;
+                    } else
+                        // if Hit # ok then store it
+                        i32TDC[ucTDCChannel * num_ions + cnt - 1] = lTDCData;
+
+                    bOKFlag = true;
+                }
             }
         } else {
             if ((ui32DataWord & 0xf0000000) == 0x00000000) {            // GroupWord detected
@@ -6218,13 +6527,12 @@ bool LMF_IO::ReadNextEvent()
         return false;
     }
     if (DAQ_ID != DAQ_ID_SIMPLE) {
-        if (max_number_of_hits == 0 || number_of_channels == 0) {
+        if ((max_number_of_hits == 0 || number_of_channels == 0) && (DAQ_ID != DAQ_ID_CAMAC)) {
             errorflag = 14;
             return false;
         }
-        if (data_format_in_userheader == LM_CAMAC) {
-            errorflag = 15;
-            return false;
+        if ((data_format_in_userheader == LM_CAMAC) && (DAQ_ID == DAQ_ID_CAMAC)) {
+            return ReadNextCAMACEvent();
         }
     }
 
@@ -6250,6 +6558,21 @@ bool LMF_IO::ReadNextEvent()
 
             while (!Read_TDC8HP_raw_format(ui64_timestamp)) {
                 if (input_lmf->error) break;
+            }
+            if (this->LMF_Version >= 11) {
+                changed_mask_read = 0;
+                *input_lmf >> changed_mask_read;
+                unsigned __int32 changed_mask = changed_mask_read;
+                if (changed_mask) {
+                    for (__int32 i = 0; i < 32; i++) {
+                        if (changed_mask & 0x1) {
+                            double double_temp;
+                            *input_lmf >> double_temp;
+                            Parameter[901 + i] = double_temp;
+                        }
+                        changed_mask >>= 1;
+                    }
+                }
             }
             number_of_bytes_in_PostEventData = 0;
             if (this->TDC8HP.UserHeaderVersion >= 7) {
@@ -6281,7 +6604,7 @@ bool LMF_IO::ReadNextEvent()
                 return false;
             }
 
-#ifdef __linux__
+#ifdef LINUX
             if((HPTDC_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
             if ((HPTDC_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -6290,7 +6613,7 @@ bool LMF_IO::ReadNextEvent()
                 return false;
             }
 
-#ifdef __linux__
+#ifdef LINUX
             HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffffLL;
 #else
             HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffff;
@@ -6318,7 +6641,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef __linux__
+#ifdef LINUX
         if((TDC8PCI2_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
         if ((TDC8PCI2_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -6327,7 +6650,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef __linux__
+#ifdef LINUX
         TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffffLL;
 #else
         TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffff;
@@ -6349,7 +6672,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef __linux__
+#ifdef LINUX
                                                                                                                                 if((event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 				this->errorflag = 2;
 				return false;
@@ -6540,6 +6863,21 @@ bool LMF_IO::ReadNextEvent()
         if (DAQ_ID == DAQ_ID_TDC8HP && this->LMF_Version >= 9) {
             *input_lmf >> ui64LevelInfo;
         }
+        if (this->LMF_Version >= 11) {
+            changed_mask_read = 0;
+            *input_lmf >> changed_mask_read;
+            unsigned __int32 changed_mask = changed_mask_read;
+            if (changed_mask) {
+                for (__int32 i = 0; i < 32; i++) {
+                    if (changed_mask & 0x1) {
+                        double double_temp;
+                        *input_lmf >> double_temp;
+                        Parameter[901 + i] = double_temp;
+                    }
+                    changed_mask >>= 1;
+                }
+            }
+        }
         number_of_bytes_in_PostEventData = 0;
         if (DAQ_ID == DAQ_ID_TDC8HP && this->TDC8HP.UserHeaderVersion >= 7) {
             *input_lmf >> number_of_bytes_in_PostEventData;
@@ -6559,7 +6897,7 @@ bool LMF_IO::ReadNextEvent()
         unsigned __int16 us16_Dummy;
         __int32 i32_Dummy;
         __int32 number_of_words;
-        __int32 channel = 0;
+        __int32 channel;
         number_of_words = 0;
         if (data_format_in_userheader == 2) {
             *input_lmf >> us16_Dummy;
@@ -6700,7 +7038,7 @@ void LMF_IO::WriteCAMACArray(double timestamp, unsigned __int32 data[])
         }
     }
 
-    unsigned __int32 i;
+    __int32 i;
 
     for (i = 0; i < Numberofcoordinates - timestamp_format_output * 2; ++i) {
         if (data_format_in_userheader_output == 2) {
@@ -6725,7 +7063,7 @@ void LMF_IO::WriteCAMACArray(double timestamp, unsigned __int32 data[])
 bool LMF_IO::ReadNextCAMACEvent()
 /////////////////////////////////////////////////////////////////
 {
-    unsigned __int32 i;
+    __int32 i;
 
     if (!input_lmf) {
         errorflag = 9;
@@ -6828,7 +7166,7 @@ void LMF_IO::GetCAMACArray(unsigned __int32 data[])
     if (must_read_first) {
         if (!ReadNextCAMACEvent()) return;
     }
-    for (unsigned __int32 i = 0; i < Numberofcoordinates - timestamp_format * 2; ++i) data[i] = CAMAC_Data[i];
+    for (__int32 i = 0; i < Numberofcoordinates - timestamp_format * 2; ++i) data[i] = CAMAC_Data[i];
 }
 
 
@@ -6837,7 +7175,57 @@ void LMF_IO::GetTDCDataArray(__int32 *tdc)
 /////////////////////////////////////////////////////////////////
 {
     __int32 i, j;
-    __int32 ii = 0;
+    __int32 ii;
+
+    if (must_read_first) {
+        if (!ReadNextEvent()) return;
+    }
+
+    //__int32 max_channel = (number_of_channels+number_of_channels2 < num_channels) ? (number_of_channels+number_of_channels2) : num_channels;
+    //__int32 max_hits = (max_number_of_hits < num_ions) ? max_number_of_hits : num_ions;
+    __int32 max_channel = num_channels;
+    __int32 max_hits = num_ions;
+
+    if (data_format_in_userheader == LM_USERDEF) {
+        if (DAQ_ID == DAQ_ID_TDC8HP || DAQ_ID == DAQ_ID_TDC8HPRAW) {
+            for (i = 0; i < max_channel; ++i) {
+                for (j = 0; j < max_hits; ++j) tdc[i * num_ions + j] = i32TDC[i * num_ions + j];
+            }
+        }
+        if (DAQ_ID == DAQ_ID_TDC8 || DAQ_ID == DAQ_ID_2TDC8 || DAQ_ID == DAQ_ID_HM1) {
+            for (i = 0; i < max_channel; ++i) {
+                for (j = 0; j < max_hits; ++j) tdc[i * num_ions + j] = us16TDC[i * num_ions + j];
+            }
+        }
+    }
+    if (data_format_in_userheader == 10) {
+        for (i = 0; i < max_channel; ++i) {
+            for (j = 0; j < max_hits; ++j) tdc[i * num_ions + j] = i32TDC[i * num_ions + j];
+        }
+    }
+    if (data_format_in_userheader == 2) {
+        for (i = 0; i < max_channel; ++i) {
+            for (j = 0; j < max_hits; ++j) tdc[i * num_ions + j] = __int32(us16TDC[i * num_ions + j]);
+        }
+    }
+    if (data_format_in_userheader == 5) {
+        for (i = 0; i < max_channel; ++i) {
+            for (j = 0; j < max_hits; ++j) {
+                if (dTDC[i * num_ions + j] >= 0.) ii = __int32(dTDC[i * num_ions + j] + 1.e-19);
+                if (dTDC[i * num_ions + j] < 0.) ii = __int32(dTDC[i * num_ions + j] - 1.e-19);
+                tdc[i * num_ions + j] = ii;
+            }
+        }
+    }
+}
+
+
+/////////////////////////////////////////////////////////////////
+void LMF_IO::GetTDCDataArray(__int64 *tdc)
+/////////////////////////////////////////////////////////////////
+{
+    __int32 i, j;
+    __int32 ii;
 
     if (must_read_first) {
         if (!ReadNextEvent()) return;
@@ -7070,10 +7458,9 @@ unsigned __int64 LMF_IO::Getuint64TimeStamp()
 
 
 /////////////////////////////////////////////////////////////////
-LMF_IO *LMF_IO::Clone()
+bool LMF_IO::Clone(LMF_IO *clone)
 /////////////////////////////////////////////////////////////////
 {
-    LMF_IO *clone = new LMF_IO(num_channels, num_ions);
     if (!clone) return 0;
 
     clone->Versionstring = this->Versionstring;
@@ -7083,6 +7470,8 @@ LMF_IO *LMF_IO::Clone()
     clone->Comment_output = this->Comment_output;
     clone->DAQ_info = this->DAQ_info;
     clone->Camac_CIF = this->Camac_CIF;
+
+    clone->iLMFcompression = this->iLMFcompression;
 
     clone->Starttime = this->Starttime;
     clone->Stoptime = this->Stoptime;
@@ -7274,7 +7663,7 @@ LMF_IO *LMF_IO::Clone()
     clone->TDC8PCI2.EmptyCounter_2nd_card = this->TDC8PCI2.EmptyCounter_2nd_card;
     clone->TDC8PCI2.EmptyCounter_since_last_Event_2nd_card = this->TDC8PCI2.EmptyCounter_since_last_Event_2nd_card;
     clone->TDC8PCI2.variable_event_length = this->TDC8PCI2.variable_event_length;
-
+    clone->TDC8PCI2.i32NumberOfDAQLoops = this->TDC8PCI2.i32NumberOfDAQLoops;
 
     // HM1
     clone->HM1.FAK_DLL_Value = this->HM1.FAK_DLL_Value;
@@ -7410,13 +7799,12 @@ LMF_IO *LMF_IO::Clone()
         clone->fADC8.serial_number[m] = this->fADC8.serial_number[m];
         for (__int32 adc = 0; adc < 2; adc++) {
             clone->fADC8.dSyncTimeOffset[m][adc] = this->fADC8.dSyncTimeOffset[m][adc];
-            clone->fADC8.iChannelMode[m][adc] = this->fADC8.iChannelMode[m][adc]; // 0 = 1.25Gs, 1 = 2.5Gs, 2 = 5Gs
+            clone->fADC8.iChannelMode[m][adc] = this->fADC8.iChannelMode[m][adc];                                 // 0 = 1.25Gs, 1 = 2.5Gs, 2 = 5Gs
             clone->fADC8.iThreshold_GT[m][m] = this->fADC8.iThreshold_GT[m][m];
             clone->fADC8.iThreshold_LT[m][m] = this->fADC8.iThreshold_LT[m][m];
             clone->fADC8.iSynchronMode[m][adc] = this->fADC8.iSynchronMode[m][adc];
         }
-        for (__int32 ch = 0; ch < 2; ch++)
-            clone->fADC8.GND_level[m][ch] = this->fADC8.GND_level[m][ch];
+        for (__int32 ch = 0; ch < 10; ch++) clone->fADC8.GND_level[m][ch] = this->fADC8.GND_level[m][ch];
     }
 
 
@@ -7438,7 +7826,7 @@ LMF_IO *LMF_IO::Clone()
     clone->fADC4.csDNLFile = this->fADC4.csDNLFile;
     for (__int32 i = 0; i < 20; i++) clone->fADC4.bits_per_mVolt[i] = this->fADC4.bits_per_mVolt[i];
 
-    return clone;
+    return true;
 }
 
 

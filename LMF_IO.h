@@ -7,22 +7,32 @@
 #include <cstring>
 
 
-#if defined(__linux__) || defined(__APPLE__)
+#ifndef LINUX
+#ifndef WIN32
+#ifndef WIN64
+#if !(defined(__APPLE__) && defined(__MACH__))
+#define LINUX
+#endif
+#endif
+#endif
+#endif
+
+
+#if defined(LINUX) || defined(__APPLE__)
 #define _fseeki64 fseeko
 #define _ftelli64 ftello
-#ifndef __ints_ARE_DEFINED
-#define __ints_ARE_DEFINED
-#define __int64 long long
+#ifndef __int32_IS_DEFINED
+#define __int32_IS_DEFINED
 #define __int32 int
 #define __int16 short
+#define __int64 long long
 #define __int8 char
 #endif
 #endif
 
 
-#ifdef _WIN32
+#if defined(WIN32) || defined(WIN64)
 #pragma warning(disable : 4996)
-#define WINVER 0x0501
 #endif
 
 
@@ -95,6 +105,129 @@ typedef struct {
 
     __int64 free_buffer;
 } ndigo_param_info;
+
+
+struct ndigo_static_info {
+    /*! \brief The number of bytes occupied by the structure
+     */
+    int size;
+
+    /*! \brief A version number
+     *
+     * that is increased when the definition of the structure is changed.
+     * The increment can be larger than one to match driver version numbers or similar.
+     * Set to 0 for all versions up to first release.
+     */
+    int version;
+
+    /*! \brief Index of the board as passed to the constructor
+     *
+     * or set via int @link conffuncts ndigo_set_board_id(ndigo_device *device, int board_id) @endlink.
+     */
+    int board_id;
+
+    /*! \brief driver revision number
+     *
+     * The lower three bytes contain a triple level hierarchy of version numbers. * E.g. 0x010103 codes
+     * version 1.1.3. A change in the first digit generally requires a recompilation of user applications.
+     * Change in the second digit denote significant improvements or changes that don't break compatibility
+     * and the third digit changes with minor bugfixes and the like.
+     */
+    int driver_revision;
+
+    /*! \brief Revision number of the FPGA configuration.
+     *
+     * This can be read from a register.
+     */
+    int firmware_revision;
+
+    /*! \brief board revision number
+     *
+     * This can be read from a register. It is a four bit number that changes when the schematic of the
+     * board is changed.
+     *  - 0: Experimental first board Version. Labeled Rev. 1
+     *  - 2: First commercial Version. Labeled "Rev. 2"
+     *  - 3: for the version produced starting in 2011 labeled "Rev. 3"
+     */
+    int board_revision;
+
+    /*! \brief The same board schematic can be populated in multiple Variants.
+     *
+     * This is a four bit code that	can be read from a register.
+     * - For board revision 0 this always reads 0.
+     * - For board revision 2
+     *		- bit 0 determines whether this board contains an 8-bit or 10-bit ADC
+     *		- bit 1 determines whether differential inputs are used
+     *		- bit 2 determines whether the tdc-oscillator is present
+     *		- bit 3 = 1 signifies a special version of the board.
+     * - For board revision 3
+     *		- bit 2 determines input connectors (0: single ende, 1: differential)
+     *		- for the other bits see user guide
+    */
+    int board_configuration;
+
+    /*! \brief Number of bits of the ADC
+     *
+     * set to 0 if unknown. Should be 14.
+     */
+    int adc_resolution;
+
+    /*! \brief Maximum sample rate.
+     *	- 2:5e8 = 250Msps for the Ndigo250M,
+     *	- 1:25e8 = 125Msps for the Ndigo125M
+     *	- 5e9 = 5Gsps for the Ndigo5G
+     */
+    double nominal_sample_rate;
+
+    /*! \brief analog bandwidth
+     *
+     *	- 1.25e8 for 125MHz for Ndigo250M
+     *	- 3e9 for 3Ghz for Ndigo5G
+     */
+    double analog_bandwidth;
+
+    /*! \brief chipID as read from the 16 bit adc chip id register at SPI address 0.
+     *
+     * his value should be cached.
+     */
+    int chip_id;
+
+    /*! \brief Serial number with year and running number in 8.24 format.
+     *
+     * The number is identical to the one printed on the silvery sticker on the board.
+     */
+    int board_serial;
+
+    /*! \brief 64bit serial number from the configuration flash chip
+     */
+    int flash_serial_low;
+
+    /*! \brief 64bit serial number from the configuration flash chip
+     */
+    int flash_serial_high;
+
+    /*! \brief If not 0 the driver found valid calibration data in the flash on the board and is using it.
+     */
+    int flash_valid;
+
+    /*! \brief Returns false for the standard AC coupled Ndigo5G.
+     *
+     * Returns true for the Ndigo250M.
+     */
+    unsigned char dc_coupled;
+
+    /*! \brief Subversion revision id of the FPGA configuration.
+     *
+     * This can be read from a register.
+     */
+    int subversion_revision;
+
+    /*! \brief calibration date
+     *
+     * DIN EN ISO 8601 string YYYY-MM-DD HH:DD describing the time when the card was calibrated.
+     */
+    char calibration_date[20];
+};
 
 
 #define FADC8_HEADER_EVENT_ID_1_25G_ADC1        0x0
@@ -171,6 +304,22 @@ public:
                 error = 1;
                 return false;
             }
+            if (ferror(file)) {
+                fclose(file);
+                error = 1;
+                return false;
+            }
+            __int8 dummy;
+            if (!fread(&dummy, 1, 1, file)) {
+                fclose(file);
+                error = 1;
+                return false;
+            }
+            if (ferror(file)) {
+                fclose(file);
+                error = 1;
+                return false;
+            }
             _fseeki64(file, (unsigned __int64) 0, SEEK_END);
             filesize = _ftelli64(file);
             _fseeki64(file, (unsigned __int64) 0, SEEK_SET);
@@ -186,8 +335,7 @@ public:
         if (file) {
             fclose(file);
             file = 0;
-        }
-        else error = 1;
+        } else error = 1;
         position = 0;
         filesize = 0;
         eof = false;
@@ -199,7 +347,7 @@ public:
 
     void read(__int8 *string, __int32 length_bytes) {
         unsigned __int32 read_bytes = (unsigned __int32) (fread(string, 1, length_bytes, file));
-        if (read_bytes != (unsigned) length_bytes) {
+        if (__int32(read_bytes) != length_bytes) {
             error = 1;
             if (feof(file)) eof = true;
         }
@@ -208,7 +356,7 @@ public:
 
     void read(unsigned __int32 *dest, __int32 length_bytes) {
         unsigned __int32 read_bytes = (unsigned __int32) (fread(dest, 1, length_bytes, file));
-        if (read_bytes != (unsigned) length_bytes) {
+        if (__int32(read_bytes) != length_bytes) {
             error = 1;
             if (feof(file)) eof = true;
         }
@@ -380,6 +528,7 @@ typedef union _myLARGE_INTEGER {
 
 
 struct TDC8PCI2_struct {
+    __int32 i32NumberOfDAQLoops;
     __int32 GateDelay_1st_card;
     __int32 OpenTime_1st_card;
     __int32 WriteEmptyEvents_1st_card;
@@ -508,6 +657,8 @@ struct fADC4_struct {
     __int32 sampling_mode[20];
     double bits_per_mVolt[20];
     std::string csConfigFile, csINLFile, csDNLFile;
+
+    ndigo_static_info ndigo_info[10];
 };
 
 
@@ -623,7 +774,7 @@ public:
 
     unsigned __int64 GetLastLevelInfo();
 
-    LMF_IO *Clone();
+    bool Clone(LMF_IO *clone);
 
     void WriteTDCData(double timestamp, unsigned __int32 cnt[], __int32 *tdc);
 
@@ -632,6 +783,10 @@ public:
     void WriteTDCData(double timestamp, unsigned __int32 cnt[], double *tdc);
 
     void WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], double *tdc);
+
+    void WriteTDCData(double timestamp, unsigned __int32 cnt[], __int64 *tdc);
+
+    void WriteTDCData(unsigned __int64 timestamp, unsigned __int32 cnt[], __int64 *tdc);
 
     void WriteTDCData(double timestamp, unsigned __int32 cnt[], unsigned __int16 *tdc);
 
@@ -658,6 +813,8 @@ public:
     void GetNumberOfHitsArray(__int32 cnt[]);
 
     void GetTDCDataArray(__int32 *tdc);
+
+    void GetTDCDataArray(__int64 *tdc);
 
     void GetTDCDataArray(double *tdc);
 
@@ -781,7 +938,7 @@ private:
 
     __int32 WriteTDC8HPHeader_LMFV_8_to_9();
 
-    __int32 WriteTDC8HPHeader_LMFV_10();
+    __int32 WriteTDC8HPHeader_LMFV_10_to_12();
 
     __int32 WriteHM1Header();
 
@@ -804,6 +961,9 @@ public:
 
     char *error_text[40];
 
+    double *Parameter;
+    double *Parameter_old;
+
     time_t Starttime;
     time_t Stoptime;
     time_t Starttime_output;
@@ -823,8 +983,8 @@ public:
     __int32 Numberofcoordinates;
     __int32 CTime_version, CTime_version_output;
     unsigned __int32 SIMPLE_DAQ_ID_Orignial;
-    unsigned __int32 DAQVersion;
-    unsigned __int32 DAQVersion_output;
+    __int32 DAQVersion;
+    __int32 DAQVersion_output;
     unsigned __int32 DAQ_ID;
     unsigned __int32 DAQ_ID_output;
     __int32 data_format_in_userheader;
@@ -835,8 +995,8 @@ public:
     unsigned __int32 User_header_size_output;
 
     __int32 IOaddress;
-    unsigned __int32 timestamp_format;
-    unsigned __int32 timestamp_format_output;
+    __int32 timestamp_format;
+    __int32 timestamp_format_output;
     __int32 timerange;
 
     unsigned __int32 number_of_channels;
@@ -850,6 +1010,8 @@ public:
     __int32 max_number_of_hits2_output;
 
     unsigned __int64 ui64LevelInfo;
+
+    unsigned __int32 changed_mask_read;
 
     unsigned __int8 ui8_PostEventData[MAX_NUMBER_OF_BYTES_IN_POSTEVENTDATA];
     __int32 number_of_bytes_in_PostEventData;
@@ -866,6 +1028,7 @@ public:
     __int32 LMF_Version_output;
     __int32 TDCDataType;
 
+    __int32 iLMFcompression;
     unsigned __int32 LMF_Header_version;
 
     double tdcresolution;
