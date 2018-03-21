@@ -5593,7 +5593,7 @@ void LMF_IO::WriteEventHeader(unsigned __int64 timestamp, unsigned __int32 cnt[]
         for (__int32 iCount = 0; iCount < number_of_channels_output; ++iCount)
             HeaderLength += cnt[iCount] * sizeof(__int32);
         HeaderLength += number_of_channels_output * sizeof(__int16);
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
         HeaderLength = (HeaderLength & 0x00ffffffffffffffLL) | 0xff00000000000000LL;	// set 0xff in bits 63..56 as EventMarker
 #else
         HeaderLength =
@@ -6604,7 +6604,7 @@ bool LMF_IO::ReadNextEvent()
                 return false;
             }
 
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
             if((HPTDC_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
             if ((HPTDC_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -6613,7 +6613,7 @@ bool LMF_IO::ReadNextEvent()
                 return false;
             }
 
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
             HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffffLL;
 #else
             HPTDC_event_length = HPTDC_event_length & 0x00ffffffffffffff;
@@ -6641,7 +6641,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
         if((TDC8PCI2_event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 #else
         if ((TDC8PCI2_event_length & 0xff00000000000000) != 0xff00000000000000) {
@@ -6650,7 +6650,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
         TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffffLL;
 #else
         TDC8PCI2_event_length = TDC8PCI2_event_length & 0x00ffffffffffffff;
@@ -6672,7 +6672,7 @@ bool LMF_IO::ReadNextEvent()
             return false;
         }
 
-#ifdef LINUX
+#if defined(LINUX) || defined(__APPLE__)
                                                                                                                                 if((event_length & 0xff00000000000000LL) != 0xff00000000000000LL) {
 				this->errorflag = 2;
 				return false;

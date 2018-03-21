@@ -230,18 +230,18 @@ struct ndigo_static_info {
 };
 
 
-#define FADC8_HEADER_EVENT_ID_1_25G_ADC1        0x0
-#define FADC8_HEADER_EVENT_ID_1_25G_ADC2        0x1
-#define FADC8_HEADER_EVENT_ID_1_25G_ADC3        0x2
-#define FADC8_HEADER_EVENT_ID_1_25G_ADC4        0x3
-#define FADC8_HEADER_EVENT_ID_2_5G_ADC12        0x4
-#define FADC8_HEADER_EVENT_ID_2_5G_ADC34        0x5
-#define FADC8_HEADER_EVENT_ID_5G_ADC1234        0x7
-#define FADC8_HEADER_EVENT_ID_TDC                0x8
-#define FADC8_HEADER_EVENT_ID_DIRECT_MEMORY_START        0xc      // add 1.2.2011
-#define FADC8_HEADER_EVENT_ID_DIRECT_MEMORY_STOP        0xd      // add 1.2.2011
-#define FADC8_HEADER_EVENT_ID_ANALYZED_SIGNAL    0xe
-#define FADC8_HEADER_EVENT_ID_END_MARKER        0xf
+#define FADC8_HEADER_EVENT_ID_1_25G_ADC1          0x0
+#define FADC8_HEADER_EVENT_ID_1_25G_ADC2          0x1
+#define FADC8_HEADER_EVENT_ID_1_25G_ADC3          0x2
+#define FADC8_HEADER_EVENT_ID_1_25G_ADC4          0x3
+#define FADC8_HEADER_EVENT_ID_2_5G_ADC12          0x4
+#define FADC8_HEADER_EVENT_ID_2_5G_ADC34          0x5
+#define FADC8_HEADER_EVENT_ID_5G_ADC1234          0x7
+#define FADC8_HEADER_EVENT_ID_TDC                 0x8
+#define FADC8_HEADER_EVENT_ID_DIRECT_MEMORY_START 0xc // add 1.2.2011
+#define FADC8_HEADER_EVENT_ID_DIRECT_MEMORY_STOP  0xd // add 1.2.2011
+#define FADC8_HEADER_EVENT_ID_ANALYZED_SIGNAL     0xe
+#define FADC8_HEADER_EVENT_ID_END_MARKER          0xf
 
 
 #ifndef FADC8_MANAGER_CLASS_IS_DEFINED
@@ -512,19 +512,19 @@ typedef union _myLARGE_INTEGER {
 #define DAQ_ID_SIMPLE 101
 
 
-#define LM_BYTE                    1    //  8bit integer
-#define LM_SHORT                2    // 16bit integer
-#define LM_LONG                    3    // 32bit integer
-#define    LM_FLOAT                4   // 32bit IEEE float
-#define LM_DOUBLE                5    // 64bit IEEE float
-#define LM_CAMAC                6    // 24bit integer
-#define LM_DOUBLELONG            7    // 64bit integer
-#define LM_SBYTE                8    // signed 8bit integer
-#define LM_SSHORT                9    // signed 16bit integer
-#define LM_SLONG                10    // signed 32bit integer
-#define LM_SDOUBLELONG            11    // signed 64bit integer
-#define LM_LASTKNOWNDATAFORMAT    LM_SDOUBLELONG
-#define LM_USERDEF                -1    // user will handle the reading
+#define LM_BYTE                 1 //  8bit integer
+#define LM_SHORT                2 // 16bit integer
+#define LM_LONG                 3 // 32bit integer
+#define LM_FLOAT                4 // 32bit IEEE float
+#define LM_DOUBLE               5 // 64bit IEEE float
+#define LM_CAMAC                6 // 24bit integer
+#define LM_DOUBLELONG           7 // 64bit integer
+#define LM_SBYTE                8 // signed 8bit integer
+#define LM_SSHORT               9 // signed 16bit integer
+#define LM_SLONG               10 // signed 32bit integer
+#define LM_SDOUBLELONG         11 // signed 64bit integer
+#define LM_LASTKNOWNDATAFORMAT LM_SDOUBLELONG
+#define LM_USERDEF             -1 // user will handle the reading
 
 
 struct TDC8PCI2_struct {
