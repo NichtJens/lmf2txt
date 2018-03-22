@@ -76,20 +76,20 @@ py::dict LMFReader::getitem(int64_t event) {
     return it.next();
 }
 
-LMFReader::LMFIterator &LMFReader::iter(uint64_t event) {
+LMFIterator &LMFReader::iter(uint64_t event) {
     at(event);
-    if (not __iter) __iter = make_unique<LMFIterator>(*this);
+    if (not __iter) __iter = make_unique<LMFIterator>(*this);  // todo: fix it using friend's permission
     return *__iter.value();
 }
 
-LMFReader::LMFIterator::LMFIterator(LMFReader &reader)
+LMFIterator::LMFIterator(LMFReader &reader)
         : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms), nhits(nhitrooms) {
     if (reader.data_format_in_userheader == 5)
         ptr_float = make_shared<vector<double>>(nchannelrooms * nhitrooms);
     else ptr_int = make_shared<vector<int32_t>>(nchannelrooms * nhitrooms);
 }
 
-py::dict LMFReader::LMFIterator::next() {
+py::dict LMFIterator::next() {  // todo: make thread safe using Mutex
     auto b = reader.ReadNextEvent();
     if (not b) {  // expected error codes: 1, 2, 9, 14, 18
         // fine
@@ -154,9 +154,9 @@ PYBIND11_MODULE(lmfpy, m) {
             .def("__getitem__", [](LMFReader &self, int64_t event) { return self.getitem(event); },
                  py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>());
 
-    py::class_<LMFReader::LMFIterator, shared_ptr<LMFReader::LMFIterator>>(m, "LMFIterator")
+    py::class_<LMFIterator, shared_ptr<LMFIterator>>(m, "LMFIterator")
             .def("__iter__", [](py::object &self) { return self; })
-            .def("__next__", &LMFReader::LMFIterator::next,
+            .def("__next__", &LMFIterator::next,
                  py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>())
             ;
 }

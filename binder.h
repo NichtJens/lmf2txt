@@ -23,6 +23,9 @@ namespace py = pybind11;
 
 
 namespace lmfpy {
+    class LMFIterator;
+
+
     class LMFReader : public LMF_IO {
     public:
         const uint8_t nchannelrooms, nhitrooms;
@@ -45,32 +48,27 @@ namespace lmfpy {
 
         py::dict getitem(int64_t event);
 
-    public:
-        class LMFIterator : public enable_shared_from_this<LMFIterator> {
-        private:
-            LMFReader &reader;
-            const uint8_t &nchannelrooms, nhitrooms;
-            vector<uint32_t> nhits;
-            shared_ptr<vector<int32_t>> ptr_int;
-            shared_ptr<vector<double>> ptr_float;
-            
-        public:
-            explicit LMFIterator(LMFReader &reader);
-
-            ~LMFIterator() = default;
-
-            py::dict next();
-        };
-
-        LMFIterator &iter(uint64_t event = 0);
-
     private:
         optional<unique_ptr<LMFIterator>> __iter;
 
-//
-//        void _iter(const shared_ptr<void> &iter);
-//
-//        int64_t iter_use_count() const;
+    public:
+        LMFIterator &iter(uint64_t event = 0);
+    };
+
+
+    class LMFIterator : public enable_shared_from_this<LMFIterator> {
+    private:
+        friend class LMFReader;
+        LMFReader &reader;
+        const uint8_t &nchannelrooms, nhitrooms;
+        vector<uint32_t> nhits;
+        shared_ptr<vector<int32_t>> ptr_int;
+        shared_ptr<vector<double>> ptr_float;
+
+    public:
+        explicit LMFIterator(LMFReader &reader);
+
+        py::dict next();
     };
 }
 
