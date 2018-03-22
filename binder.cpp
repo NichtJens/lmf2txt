@@ -72,7 +72,7 @@ void LMFReader::at(uint64_t event) {  // todo: support to seek other events!
 
 py::dict LMFReader::getitem(int64_t event) {
     uint64_t mod = event % len();
-    auto it = iter(mod);
+    auto &it = iter(mod);
     return it.next();
 }
 
@@ -83,13 +83,15 @@ LMFIterator &LMFReader::iter(uint64_t event) {
 }
 
 LMFIterator::LMFIterator(LMFReader &reader)
-        : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms), nhits(nhitrooms) {
+        : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms),
+          nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())), nhits(nhitrooms) {
     if (reader.data_format_in_userheader == 5)
         ptr_float = make_shared<vector<double>>(nchannelrooms * nhitrooms);
     else ptr_int = make_shared<vector<int32_t>>(nchannelrooms * nhitrooms);
 }
 
-py::dict LMFIterator::next() {  // todo: make thread safe using Mutex
+py::dict LMFIterator::next() {
+    lock_guard<mutex> locker(mut);
     auto b = reader.ReadNextEvent();
     if (not b) {  // expected error codes: 1, 2, 9, 14, 18
         // fine
@@ -113,10 +115,10 @@ py::dict LMFIterator::next() {  // todo: make thread safe using Mutex
     py::dict ret;
     ret["event"] = reader.at() - 1;
     ret["timestamp"] = reader.GetDoubleTimeStamp();
-//    for (auto i = 0; i < nchannels; ++i) {
-//        string key = "ch" + to_string(i);
-//        ret[key] = nhits[i];
-//    }
+    for (auto i = 0; i < nchannels; ++i) {
+        auto key = fmt::format("ch{:02d}", i);
+        ret[key.c_str()] = nhits[i];
+    }
     return ret;
 //    map<string, uint32_t> m;
 //    for (auto i = 0; i < nchannels; ++i) {
@@ -150,7 +152,8 @@ PYBIND11_MODULE(lmfpy, m) {
                     // &LMFReader::TDC8HP
 
             .def("__len__", &LMFReader::len)
-            .def("__iter__", [](LMFReader &self) { return self.iter(); })
+            .def("__iter__", [](LMFReader &self) -> LMFIterator & { return self.iter(); },
+                 py::return_value_policy::reference)
             .def("__getitem__", [](LMFReader &self, int64_t event) { return self.getitem(event); },
                  py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>());
 

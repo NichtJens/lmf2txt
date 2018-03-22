@@ -4,7 +4,12 @@ project(lmfpy)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(pybind11 REQUIRED)
-find_package(eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
+add_subdirectory(fmt)
 
-pybind11_add_module(lmfpy LMF_IO.h LMF_IO.cpp binder.h binder.cpp)
+add_library(lmfpy SHARED LMF_IO.h LMF_IO.cpp binder.h binder.cpp)
+target_link_libraries(lmfpy
+        PRIVATE pybind11::module
+        PRIVATE fmt::fmt-header-only)
+set_target_properties(lmfpy
+        PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+        SUFFIX "${PYTHON_MODULE_EXTENSION}")

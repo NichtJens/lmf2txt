@@ -6,13 +6,14 @@
 #define LMFPY_BINDER_H
 
 
+#include <mutex>
 #include <memory>
 #include <iostream>
 
 #include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
 #include <pybind11/chrono.h>
 #include <pybind11/operators.h>
+#include <fmt/format.h>
 
 #include "LMF_IO.h"
 
@@ -60,10 +61,11 @@ namespace lmfpy {
     private:
         friend class LMFReader;
         LMFReader &reader;
-        const uint8_t &nchannelrooms, nhitrooms;
+        const uint8_t &nchannelrooms, nhitrooms, nchannels;
         vector<uint32_t> nhits;
         shared_ptr<vector<int32_t>> ptr_int;
         shared_ptr<vector<double>> ptr_float;
+        mutex mut;
 
     public:
         explicit LMFIterator(LMFReader &reader);
@@ -71,6 +73,5 @@ namespace lmfpy {
         py::dict next();
     };
 }
-
 
 #endif //LMFPY_BINDER_H
