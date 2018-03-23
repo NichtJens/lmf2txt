@@ -32,5 +32,7 @@ lmf2txt
 *.exe
 *.out
 *.app
+
+# Others
 cmake-build-debug
 .idea

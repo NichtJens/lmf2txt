@@ -10,10 +10,9 @@
 #include <memory>
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <pybind11/chrono.h>
-#include <pybind11/operators.h>
 #include <pybind11/numpy.h>
-#include <fmt/format.h>
 
 #include "LMF_IO.h"
 
@@ -63,8 +62,8 @@ namespace lmfpy {
         LMFReader &reader;
         const uint8_t &nchannelrooms, nhitrooms, nchannels;
         vector<uint32_t> nhits;
-        unique_ptr<vector<int32_t>> dint;
-        unique_ptr<vector<double>> dfloat;
+        unique_ptr<vector<int32_t>> hits_int;
+        unique_ptr<vector<double>> hits_float;
         mutex mut;
 
     public:

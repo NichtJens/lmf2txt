@@ -76,9 +76,9 @@ LMFIterator &LMFReader::iter(uint64_t event) {
 
 LMFIterator::LMFIterator(LMFReader &reader)
         : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms),
-          nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())), nhits(nhitrooms) {
-    if (reader.data_format_in_userheader == 5) dfloat = make_unique<vector<double>>(nchannelrooms * nhitrooms);
-    else dint = make_unique<vector<int32_t>>(nchannelrooms * nhitrooms);
+          nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())), nhits(nchannels) {
+    if (reader.data_format_in_userheader == 5) hits_float = make_unique<vector<double>>(nchannelrooms * nhitrooms);
+    else hits_int = make_unique<vector<int32_t>>(nchannelrooms * nhitrooms);
 }
 
 py::dict LMFIterator::next() {
@@ -101,24 +101,38 @@ py::dict LMFIterator::next() {
         throw runtime_error("Unknown error!");
     }
     reader.GetNumberOfHitsArray(nhits.data());
-    if (reader.data_format_in_userheader == 5) reader.GetTDCDataArray(dfloat->data());
-    else reader.GetTDCDataArray(dint->data());
+    if (reader.data_format_in_userheader == 5) reader.GetTDCDataArray(hits_float->data());
+    else reader.GetTDCDataArray(hits_int->data());
 
     py::dict ret;
     ret["event"] = reader.at() - 1;
     ret["timestamp"] = reader.GetDoubleTimeStamp();
-    for (auto i = 0; i < nchannels; ++i) {  // todo: return numpy array
-        auto key = "ch" + to_string(i);
-        auto n = nhits[i];
-        if (reader.data_format_in_userheader == 5) {
-            py::list hits(n);
-            for (auto j = 0; j < n; ++j) hits[j] = (*dfloat)[i * nhitrooms + j];
-            ret[key.c_str()] = hits;
-        } else {
-            py::list hits(n);
-            for (auto j = 0; j < n; ++j) hits[j] = (*dint)[i * nhitrooms +j];
-            ret[key.c_str()] = hits;
+
+    // todo: return numpy array
+    ret["nhits"] = vector<uint32_t>(nhits);
+    auto n = accumulate(nhits.begin(), nhits.end(), (uint32_t) 0);
+    unique_ptr<vector<int32_t>> ihits;
+    unique_ptr<vector<double>> fhits;
+    if (reader.data_format_in_userheader == 5) {
+        fhits = make_unique<vector<double>>(n);
+        auto k = 0;
+        for (auto i = 0; i < nchannels; ++i) {
+            for (auto j = 0; j < nhits[i]; ++j) {
+                (*fhits)[k] = (*hits_float)[i * nhitrooms + j];
+                ++k;
+            }
         }
+        ret["hits"] = *fhits;
+    } else {
+        ihits = make_unique<vector<int32_t>>(n);
+        auto k = 0;
+        for (auto i = 0; i < nchannels; ++i) {
+            for (auto j = 0; j < nhits[i]; ++j) {
+                (*ihits)[k] = (*hits_int)[i * nhitrooms + j];
+                ++k;
+            }
+        }
+        ret["hits"] = *ihits;
     }
     return ret;
 }
@@ -148,10 +162,10 @@ PYBIND11_MODULE(lmfpy, m) {  // todo: add other values
             .def("__iter__", [](LMFReader &self) -> LMFIterator & { return self.iter(); },
                  py::return_value_policy::reference)
             .def("__getitem__", [](LMFReader &self, int64_t event) { return self.getitem(event); },
-                 py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>());
+                 py::return_value_policy::move, py::call_guard<py::gil_scoped_release>());
 
     py::class_<LMFIterator, shared_ptr<LMFIterator>>(m, "LMFIterator")
             .def("__iter__", [](py::object &self) { return self; })
             .def("__next__", &LMFIterator::next,
-                 py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>());
+                 py::return_value_policy::move, py::call_guard<py::gil_scoped_release>());
 }
