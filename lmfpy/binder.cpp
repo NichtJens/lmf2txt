@@ -71,14 +71,14 @@ py::dict LMFReader::getitem(int64_t event) {
 LMFIterator &LMFReader::iter(uint64_t event) {
     at(event);
     if (not __iter) __iter = make_unique<LMFIterator>(*this);  // todo: fix it using friend's permission
-    return *__iter.value();
+    return *__iter;
 }
 
 LMFIterator::LMFIterator(LMFReader &reader)
         : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms),
           nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())), nhits(nhitrooms) {
-    if (reader.data_format_in_userheader == 5) dfloat = vector<double>(nchannelrooms * nhitrooms);
-    else dint = vector<int32_t>(nchannelrooms * nhitrooms);
+    if (reader.data_format_in_userheader == 5) dfloat = make_unique<vector<double>>(nchannelrooms * nhitrooms);
+    else dint = make_unique<vector<int32_t>>(nchannelrooms * nhitrooms);
 }
 
 py::dict LMFIterator::next() {
@@ -97,7 +97,7 @@ py::dict LMFIterator::next() {
         if (reader.errorflag == 9) throw runtime_error("Missing the reading file!");
         if (reader.errorflag == 14) throw runtime_error("Invalid arguments of DAQ 'CAMAC' reader!");
         if (reader.errorflag == 18) throw runtime_error("Broken file!");
-        if (not reader.input_lmf->error == 0) throw runtime_error("Something wrong on the reading file!");
+        if (reader.input_lmf->error != 0) throw runtime_error("Something wrong on the reading file!");
         throw runtime_error("Unknown error!");
     }
     reader.GetNumberOfHitsArray(nhits.data());
@@ -108,7 +108,7 @@ py::dict LMFIterator::next() {
     ret["event"] = reader.at() - 1;
     ret["timestamp"] = reader.GetDoubleTimeStamp();
     for (auto i = 0; i < nchannels; ++i) {  // todo: return numpy array
-        auto key = fmt::format("ch{:02d}", i);
+        auto key = "ch" + to_string(i);
         auto n = nhits[i];
         if (reader.data_format_in_userheader == 5) {
             py::list hits(n);

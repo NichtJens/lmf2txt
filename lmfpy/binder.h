@@ -8,7 +8,6 @@
 
 #include <mutex>
 #include <memory>
-#include <iostream>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/chrono.h>
@@ -51,7 +50,7 @@ namespace lmfpy {
         py::dict getitem(int64_t event);
 
     private:
-        optional<unique_ptr<LMFIterator>> __iter;
+        unique_ptr<LMFIterator> __iter;
 
     public:
         LMFIterator &iter(uint64_t event = 0);
@@ -64,8 +63,8 @@ namespace lmfpy {
         LMFReader &reader;
         const uint8_t &nchannelrooms, nhitrooms, nchannels;
         vector<uint32_t> nhits;
-        optional<vector<int32_t>> dint;
-        optional<vector<double>> dfloat;
+        unique_ptr<vector<int32_t>> dint;
+        unique_ptr<vector<double>> dfloat;
         mutex mut;
 
     public:
