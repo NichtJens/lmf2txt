@@ -60,14 +60,6 @@ void LMFReader::at(uint64_t event) {  // todo: support to seek other events!
         return;
     }
     throw runtime_error("Not supported yet!");
-//    if (len() <= event) throw out_of_range("The arg has to be less than: " + to_string(len()) + "!");
-//    uint64_t eventsize = 4 * number_of_channels +
-//                         ((data_format_in_userheader == 5) ? 8 : 4) * number_of_channels * max_number_of_hits;
-//    auto ret = fseek(input_lmf->file,
-//                     static_cast<uint32_t>(eventsize * event + Headersize + User_header_size),
-//                     SEEK_SET);
-//    if (ret) throw runtime_error("File to seek an event: " + to_string(ret) + "!");
-//    uint64_number_of_read_events = event;
 }
 
 py::dict LMFReader::getitem(int64_t event) {
@@ -85,9 +77,8 @@ LMFIterator &LMFReader::iter(uint64_t event) {
 LMFIterator::LMFIterator(LMFReader &reader)
         : reader(reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms),
           nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())), nhits(nhitrooms) {
-    if (reader.data_format_in_userheader == 5)
-        ptr_float = make_shared<vector<double>>(nchannelrooms * nhitrooms);
-    else ptr_int = make_shared<vector<int32_t>>(nchannelrooms * nhitrooms);
+    if (reader.data_format_in_userheader == 5) dfloat = vector<double>(nchannelrooms * nhitrooms);
+    else dint = vector<int32_t>(nchannelrooms * nhitrooms);
 }
 
 py::dict LMFIterator::next() {
@@ -110,27 +101,29 @@ py::dict LMFIterator::next() {
         throw runtime_error("Unknown error!");
     }
     reader.GetNumberOfHitsArray(nhits.data());
-    if (reader.data_format_in_userheader == 5) reader.GetTDCDataArray(ptr_float.get()->data());
-    else reader.GetTDCDataArray(ptr_int.get()->data());
+    if (reader.data_format_in_userheader == 5) reader.GetTDCDataArray(dfloat->data());
+    else reader.GetTDCDataArray(dint->data());
+
     py::dict ret;
     ret["event"] = reader.at() - 1;
     ret["timestamp"] = reader.GetDoubleTimeStamp();
-    for (auto i = 0; i < nchannels; ++i) {
+    for (auto i = 0; i < nchannels; ++i) {  // todo: return numpy array
         auto key = fmt::format("ch{:02d}", i);
-        ret[key.c_str()] = nhits[i];
+        auto n = nhits[i];
+        if (reader.data_format_in_userheader == 5) {
+            py::list hits(n);
+            for (auto j = 0; j < n; ++j) hits[j] = (*dfloat)[i * nhitrooms + j];
+            ret[key.c_str()] = hits;
+        } else {
+            py::list hits(n);
+            for (auto j = 0; j < n; ++j) hits[j] = (*dint)[i * nhitrooms +j];
+            ret[key.c_str()] = hits;
+        }
     }
     return ret;
-//    map<string, uint32_t> m;
-//    for (auto i = 0; i < nchannels; ++i) {
-//        m["ch" + to_string(i)] = nhits[i];
-//    }
-//    return py::dict(  // todo: return other values
-//            "event"_a = reader.at() - 1,
-//            "timestamp"_a = reader.GetDoubleTimeStamp()  // seconds
-//    );
 }
 
-PYBIND11_MODULE(lmfpy, m) {
+PYBIND11_MODULE(lmfpy, m) {  // todo: add other values
     py::class_<LMFReader>(m, "LMFReader")
             .def(py::init<const string &, int32_t, int32_t>(),
                  "filename"_a, "nchannelrooms"_a = 80, "nhitrooms"_a = 100)
@@ -160,6 +153,5 @@ PYBIND11_MODULE(lmfpy, m) {
     py::class_<LMFIterator, shared_ptr<LMFIterator>>(m, "LMFIterator")
             .def("__iter__", [](py::object &self) { return self; })
             .def("__next__", &LMFIterator::next,
-                 py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>())
-            ;
+                 py::return_value_policy::take_ownership, py::call_guard<py::gil_scoped_release>());
 }

@@ -13,6 +13,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/chrono.h>
 #include <pybind11/operators.h>
+#include <pybind11/numpy.h>
 #include <fmt/format.h>
 
 #include "LMF_IO.h"
@@ -63,8 +64,8 @@ namespace lmfpy {
         LMFReader &reader;
         const uint8_t &nchannelrooms, nhitrooms, nchannels;
         vector<uint32_t> nhits;
-        shared_ptr<vector<int32_t>> ptr_int;
-        shared_ptr<vector<double>> ptr_float;
+        optional<vector<int32_t>> dint;
+        optional<vector<double>> dfloat;
         mutex mut;
 
     public:

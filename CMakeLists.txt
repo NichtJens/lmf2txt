@@ -3,8 +3,8 @@ project(lmfpy)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(pybind11 REQUIRED)
 add_subdirectory(fmt)
+find_package(pybind11 REQUIRED)
 
 add_library(lmfpy SHARED LMF_IO.h LMF_IO.cpp binder.h binder.cpp)
 target_link_libraries(lmfpy
