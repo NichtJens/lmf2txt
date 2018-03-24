@@ -58,7 +58,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='lmfpy',
-    version='0.0.1',
+    version='20180325',
     author='Daehyun You',
     author_email='daehyun.park.you@gmail.com',
     ext_modules=[CMakeExtension('lmfpy')],
