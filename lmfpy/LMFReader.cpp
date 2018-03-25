@@ -77,7 +77,7 @@ const LMFIterator &LMFIterator::operator++() const {
 }
 
 Event LMFIterator::operator*() {
-    vector<uint32_t> nhits(nchannels);
+    vector<uint32_t> nhits(nchannelrooms);
     vector<double> flatten;
     flatten.reserve(nchannels * nhitrooms);
 
