@@ -756,7 +756,7 @@ public:
 
     LMF_IO(__int32 Number_of_Channels, __int32 Number_of_Hits);
 
-    virtual ~LMF_IO();
+    ~LMF_IO();
 
     static __int32 GetVersionNumber();
 

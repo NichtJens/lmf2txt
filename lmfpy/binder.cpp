@@ -15,7 +15,6 @@ PYBIND11_MODULE(lmfpy, m) {  // todo: add other values
     py::class_<LMFReader>(m, "LMFReader")
             .def(py::init<string, int32_t, int32_t>(),
                  "filename"_a, "nchannelrooms"_a = 32, "nhitrooms"_a = 64)
-
             .def_readonly("recorded_at", &LMFReader::FilePathName)
             .def_readonly("version", &LMFReader::Versionstring)
             .def_readonly("comment", &LMFReader::Comment)
@@ -25,8 +24,6 @@ PYBIND11_MODULE(lmfpy, m) {  // todo: add other values
             .def_readonly("to_nanosec", &LMFReader::tdcresolution)
             .def_property_readonly("time_fr", &LMFReader::time_fr)
             .def_property_readonly("time_to", &LMFReader::time_to)
-            //GetLastLevelInfo
-
             .def("__len__", &LMFReader::end)
             .def("__iter__", [](LMFReader &self) { return py::make_iterator(self.begin(), self.end()); },
                  py::keep_alive<0, 1>())

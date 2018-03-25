@@ -21,7 +21,7 @@ namespace lmfpy {
         double timestamp{};
         vector<uint32_t> nhits;
         vector<double> hits;
-        ~Event() = default;
+        //~Event() = default;
     };
 
 
@@ -38,7 +38,7 @@ namespace lmfpy {
     public:
         explicit LMFReader(string filename, uint32_t nchannelrooms = 32, uint32_t nhitrooms = 64);
 
-        ~LMFReader() override;
+        //~LMFReader() = default;
 
         chrono::system_clock::time_point time_fr() const;
 

@@ -30,9 +30,9 @@ LMFReader::LMFReader(string filename, uint32_t nchannelrooms, uint32_t nhitrooms
     }
 }
 
-LMFReader::~LMFReader() {
-    CloseInputLMF();
-}
+//LMFReader::~LMFReader() {
+//    //CloseInputLMF();
+//}
 
 chrono::system_clock::time_point LMFReader::time_fr() const {
     return chrono::system_clock::from_time_t(Starttime);
