@@ -30,10 +30,6 @@ LMFReader::LMFReader(string filename, uint32_t nchannelrooms, uint32_t nhitrooms
     }
 }
 
-//LMFReader::~LMFReader() {
-//    //CloseInputLMF();
-//}
-
 chrono::system_clock::time_point LMFReader::time_fr() const {
     return chrono::system_clock::from_time_t(Starttime);
 }
@@ -91,6 +87,7 @@ Event LMFIterator::operator*() {
     }
 
     reader->GetNumberOfHitsArray(nhits.data());
+    nhits.erase(nhits.begin() + nchannels, nhits.begin() + nchannelrooms);
     if (type == int_) reader->GetTDCDataArray(ihits.data());
     if (type == float_) reader->GetTDCDataArray(fhits.data());
     if (type == int_) {

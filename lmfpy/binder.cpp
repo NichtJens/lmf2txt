@@ -11,7 +11,7 @@ namespace py = pybind11;
 using namespace lmfpy;
 
 
-PYBIND11_MODULE(lmfpy, m) {  // todo: add other values
+PYBIND11_MODULE(lmfpy, m) {
     py::class_<LMFReader>(m, "LMFReader")
             .def(py::init<string, int32_t, int32_t>(),
                  "filename"_a, "nchannelrooms"_a = 32, "nhitrooms"_a = 64)
