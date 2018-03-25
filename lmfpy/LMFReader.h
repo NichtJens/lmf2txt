@@ -24,6 +24,25 @@ namespace lmfpy {
     };
 
 
+    /**
+     * \class LMFReader
+     * \brief A LMF file reader
+     * \example On C++14
+     * auto reader = make_unique<LMFReader>("afile.lmf");
+     * for (auto iter = reader->begin(); iter != reader->end(); ++iter) {
+     *     auto i = *iter;
+     *     cout << "------- #" << i.event << " -------" << endl;
+     *     cout << "time: " << i.timestamp << " s" << endl;
+     *     // ...
+     * }
+     * \example On C++17
+     * auto reader = make_unique<LMFReader>("afile.lmf");
+     * for (auto i : reader) {
+     *     cout << "------- #" << i.event << " -------" << endl;
+     *     cout << "time: " << i.timestamp << " s" << endl;
+     *     // ...
+     * }
+     */
     class LMFReader : public LMF_IO {
         friend class LMFIterator;
 
