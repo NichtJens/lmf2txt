@@ -80,6 +80,8 @@ namespace lmfpy {
         explicit LMFIterator(LMFReader &reader);
 
     public:
+        uint64_t end() const;
+
         bool operator==(uint64_t i) const;
 
         bool operator!=(uint64_t i) const;

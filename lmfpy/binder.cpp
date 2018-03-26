@@ -25,15 +25,17 @@ PYBIND11_MODULE(lmfpy, m) {
             .def_property_readonly("time_fr", &LMFReader::time_fr)
             .def_property_readonly("time_to", &LMFReader::time_to)
             .def("__len__", &LMFReader::end)
-            .def("__iter__", [](LMFReader &self) { return py::make_iterator(self.begin(), self.end()); },
-                 py::keep_alive<0, 1>())  // todo: return with type annotation
-            .def("__getitem__", [](LMFReader &self, int64_t event) { return self[event]; },
+            .def("__iter__", [](LMFReader &self) {
+                return py::make_iterator<py::return_value_policy::move>(self.begin(), self.end(),
+                                                                        py::call_guard<py::gil_scoped_release>());
+            }, py::keep_alive<0, 1>())
+            .def("__getitem__", [](LMFReader &self, int64_t event) -> Event { return self[event]; },
                  py::return_value_policy::move, py::call_guard<py::gil_scoped_release>());
 
 
     py::class_<Event>(m, "Event")
             .def_readonly("event", &Event::event)
             .def_readonly("timestamp", &Event::timestamp)
-            .def_readonly("nhits", &Event::nhits)
+            .def_readonly("nhits", &Event::nhits)  // todo: return numpy array
             .def_readonly("hits", &Event::hits);
 }

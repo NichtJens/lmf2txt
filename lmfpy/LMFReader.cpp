@@ -111,3 +111,7 @@ Event LMFIterator::operator*() {
             .hits = move(flatten)
     };
 }
+
+uint64_t LMFIterator::end() const {
+    return reader->end();
+}
