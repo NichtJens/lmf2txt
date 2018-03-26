@@ -4,6 +4,10 @@
 using namespace lmfpy;
 
 
+Event::Event(uint64_t event, double timestamp, vector<uint32_t> nhits, vector<double> hits)
+        : event(event), timestamp(timestamp), nhits(nhits), hits(hits) {
+}
+
 uint64_t LMFReader::at() const {
     return uint64_number_of_read_events;
 }

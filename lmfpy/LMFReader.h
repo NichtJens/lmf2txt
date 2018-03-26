@@ -17,10 +17,12 @@ namespace lmfpy {
     class LMFIterator;
 
     struct Event {
-        uint64_t event{};
-        double timestamp{};
+        uint64_t event;
+        double timestamp;
         vector<uint32_t> nhits;
         vector<double> hits;
+        Event(uint64_t event, double timestamp, vector<uint32_t> nhits, vector<double> hits);
+        Event() = default;
     };
 
 

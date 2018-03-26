@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
 from lmfpy import LMFReader
 
@@ -36,3 +38,4 @@ for i, event in enumerate(afile):
         fr = sum(event.nhits[:ch])
         hits = ", ".join("{: 9.3f}".format(k*f) for f in event.hits[fr:fr+n])
         print("Channel #{:03d} Total {:3d} Hit(s): {}".format(ch, n, hits))
+
