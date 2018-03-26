@@ -21,7 +21,7 @@ print("Number of Channels: {}".format(afile.nchannels))
 print("Maximum Number of Hits: {}".format(afile.max_nhits))
 print("Number of Coordinates: {}".format(afile.ncoordinates))
 print("Number of Events: {}".format(len(afile)))
-print("TDC Resolution: {:.6f}".format(afile.to_nanosec))
+print("TDC Resolution: {:.6f} ns".format(afile.to_nanosec))
 print("Start Time: {}".format(afile.time_fr))
 print("Stop Time: {}".format(afile.time_to))
 
@@ -35,4 +35,4 @@ for i, event in enumerate(afile):
     for ch, n in enumerate(event.nhits):
         fr = sum(event.nhits[:ch])
         hits = ", ".join("{: 9.3f}".format(k*f) for f in event.hits[fr:fr+n])
-        print("Channel #{:03d} Total {:3d} Hits: {}".format(ch, n, hits))
+        print("Channel #{:03d} Total {:3d} Hit(s): {}".format(ch, n, hits))
