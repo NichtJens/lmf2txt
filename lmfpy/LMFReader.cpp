@@ -137,6 +137,7 @@ Event LMFIterator::operator*() noexcept(false) {
             }
         }
     }
+    flatten.shrink_to_fit();
     return {reader->at() - 1, reader->GetDoubleTimeStamp(), move(nhits), move(flatten)};
 }
 
