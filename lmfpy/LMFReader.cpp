@@ -5,14 +5,14 @@ using namespace lmfpy;
 
 
 Event::Event(uint64_t event, double timestamp, vector<uint32_t> nhits, vector<double> hits)
-        : event(event), timestamp(timestamp), nhits(nhits), hits(hits) {
+        : event(event), timestamp(timestamp), nhits(move(nhits)), hits(move(hits)) {
 }
 
 uint64_t LMFReader::at() const {
     return uint64_number_of_read_events;
 }
 
-void LMFReader::at(uint64_t event) {  // todo: support to seek other events!
+void LMFReader::at(uint64_t event) noexcept(false) {  // todo: support to seek other events!
     lock_guard<mutex> locker(mut);
     if (event == 0) {
         auto ret = fseek(input_lmf->file, Headersize + User_header_size, SEEK_SET);
@@ -25,7 +25,7 @@ void LMFReader::at(uint64_t event) {  // todo: support to seek other events!
     throw runtime_error("Not supported yet!");
 }
 
-LMFReader::LMFReader(string filename, uint32_t nchannelrooms, uint32_t nhitrooms)
+LMFReader::LMFReader(string filename, uint32_t nchannelrooms, uint32_t nhitrooms) noexcept(false)
         : LMF_IO(nchannelrooms, nhitrooms), nchannelrooms(nchannelrooms), nhitrooms(nhitrooms) {
     auto b = OpenInputLMF(move(filename));
     if (not b or not InputFileIsOpen) {  // expected error codes: 3, 4, 6, 7, 8
@@ -56,6 +56,35 @@ Event LMFReader::operator[](int64_t event) {
     return *begin(mod);
 }
 
+string LMFReader::recorded_at() const {
+    return FilePathName;
+}
+
+string LMFReader::version() const {
+    return Versionstring;
+}
+
+string LMFReader::comment() const {
+    return Comment;
+}
+
+uint32_t LMFReader::nchannels() const {
+    return GetNumberOfChannels();
+}
+
+uint32_t LMFReader::max_nhits() const {
+    return GetMaxNumberOfHits();
+}
+
+uint32_t LMFReader::ncoordinates() const {
+    if (Numberofcoordinates < 0) return 0;
+    return static_cast<uint32_t>(Numberofcoordinates);
+}
+
+double LMFReader::to_nanosec() const {
+    return tdcresolution;
+}
+
 LMFIterator::LMFIterator(LMFReader &reader)
         : reader(&reader), nchannelrooms(reader.nchannelrooms), nhitrooms(reader.nhitrooms),
           nchannels(static_cast<uint8_t>(reader.GetNumberOfChannels())),
@@ -76,7 +105,7 @@ const LMFIterator &LMFIterator::operator++() const {
     return *this;
 }
 
-Event LMFIterator::operator*() {
+Event LMFIterator::operator*() noexcept(false) {
     vector<uint32_t> nhits(nchannelrooms);
     vector<double> flatten;
     flatten.reserve(nchannels * nhitrooms);
@@ -108,12 +137,7 @@ Event LMFIterator::operator*() {
             }
         }
     }
-    return {
-            .event = reader->at() - 1,
-            .timestamp = reader->GetDoubleTimeStamp(),
-            .nhits = move(nhits),
-            .hits = move(flatten)
-    };
+    return {reader->at() - 1, reader->GetDoubleTimeStamp(), move(nhits), move(flatten)};
 }
 
 uint64_t LMFIterator::end() const {

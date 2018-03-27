@@ -29,23 +29,25 @@ namespace lmfpy {
     /**
      * \class LMFReader
      * \brief A LMF file reader
-     * \example On C++14
-     * auto reader = make_unique<LMFReader>("afile.lmf");
-     * for (auto iter = reader->begin(); iter != reader->end(); ++iter) {
-     *     auto i = *iter;
-     *     cout << "------- #" << i.event << " -------" << endl;
-     *     cout << "time: " << i.timestamp << " s" << endl;
+     * \example a loop on C++11
+     * auto afile = make_shared<LMFReader>("afile.lmf");
+     * for (auto iter = afile->begin(); iter != afile->end();) {
+     *     auto i = *iter;  // i is a instance Event
      *     // ...
      * }
-     * \example On C++17
-     * auto reader = make_unique<LMFReader>("afile.lmf");
-     * for (auto i : reader) {
-     *     cout << "------- #" << i.event << " -------" << endl;
-     *     cout << "time: " << i.timestamp << " s" << endl;
+     * \example a loop on C++14
+     * auto afile = make_unique<LMFReader>("afile.lmf");
+     * for (auto iter = afile->begin(); iter != afile->end();) {
+     *     auto i = *iter;  // i is a instance Event
+     *     // ...
+     * }
+     * \example a loop on C++17
+     * auto afile = make_unique<LMFReader>("afile.lmf");
+     * for (auto i : afile) {  // i is a instance Event
      *     // ...
      * }
      */
-    class LMFReader : public LMF_IO {
+    class LMFReader : private LMF_IO {
         friend class LMFIterator;
 
         mutex mut;
@@ -53,10 +55,26 @@ namespace lmfpy {
 
         uint64_t at() const;
 
-        void at(uint64_t event);
+        void at(uint64_t event) noexcept(false);
 
     public:
-        explicit LMFReader(string filename, uint32_t nchannelrooms = 32, uint32_t nhitrooms = 64);
+        explicit LMFReader(string filename,
+                           uint32_t nchannelrooms = 32,
+                           uint32_t nhitrooms = 64) noexcept(false);
+
+        string recorded_at() const;
+
+        string version() const;
+
+        string comment() const;
+
+        uint32_t nchannels() const;
+
+        uint32_t max_nhits() const;
+
+        uint32_t ncoordinates() const;
+
+        double to_nanosec() const;
 
         chrono::system_clock::time_point time_fr() const;
 
@@ -90,7 +108,7 @@ namespace lmfpy {
 
         const LMFIterator &operator++() const;
 
-        Event operator*();
+        Event operator*() noexcept(false);
     };
 }
 
