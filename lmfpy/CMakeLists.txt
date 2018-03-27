@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(lmfpy)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
 
 find_package(pybind11 REQUIRED)
 

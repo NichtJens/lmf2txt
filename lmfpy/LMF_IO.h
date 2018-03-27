@@ -830,9 +830,9 @@ public:
 
     unsigned __int64 Getuint64TimeStamp();
 
-    unsigned __int32 GetNumberOfChannels();
+    unsigned __int32 GetNumberOfChannels() const;
 
-    unsigned __int32 GetMaxNumberOfHits();
+    unsigned __int32 GetMaxNumberOfHits() const;
 
     bool SeekToEventNumber(unsigned __int64 Eventnumber);
 
