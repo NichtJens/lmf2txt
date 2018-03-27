@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+from functools import partial
 from argparse import ArgumentParser
+from tqdm import tqdm
+
 from lmfpy import LMFReader
 
 
@@ -12,31 +15,49 @@ parser.add_argument("-f", "--full",
 parser.add_argument("-n", "--ns",
                     help="convert values to nanoseconds",
                     action='store_true')
+parser.add_argument("-o", "--output",
+                    help="output, if not print it out",
+                    type=str, default="")
 args = parser.parse_args()
 
 
-afile = LMFReader(args.filename)
-print("               Filename: {}".format(afile.recorded_at))
-print("                Version: {}".format(afile.version))
-print("                Comment: {}".format(afile.comment))
-print("     Number of Channels: {}".format(afile.nchannels))
-print(" Maximum Number of Hits: {}".format(afile.max_nhits))
-print("  Number of Coordinates: {}".format(afile.ncoordinates))
-print("       Number of Events: {}".format(len(afile)))
-print("    TDC Resolution (ns): {:.6f}".format(afile.to_nanosec))
-print("             Start Time: {}".format(afile.time_fr))
-print("              Stop Time: {}".format(afile.time_to))
+def main(reader: LMFReader, limit=None, k=None, out=None):
+    if limit is None:
+        limit = len(reader)
+    if k is None:
+        k = 1
+    if out is None:
+        out = partial(print, end="")
 
-limit = 100 if not args.full else len(afile)
-k = 1 if not args.ns else afile.to_nanosec
-for i, event in enumerate(afile):
-    if not i < limit:
-        break
-    print("########################")
-    print("# {}".format(event.event))
-    print("########################")
-    print("                 At (s): {: 12.3f}".format(event.timestamp))
-    for ch, n in enumerate(event.nhits):
-        fr = sum(event.nhits[:ch])
-        hits = ", ".join("{: 12.3f}".format(k*f) for f in event.hits[fr:fr+n])
-        print("Channel #{:03d} {:3d} Hit(s): {}".format(ch, n, hits))
+    out("               Filename: {}\n".format(reader.recorded_at))
+    out("                Version: {}\n".format(reader.version))
+    out("                Comment: {}\n".format(reader.comment))
+    out("     Number of Channels: {}\n".format(reader.nchannels))
+    out(" Maximum Number of Hits: {}\n".format(reader.max_nhits))
+    out("  Number of Coordinates: {}\n".format(reader.ncoordinates))
+    out("       Number of Events: {}\n".format(len(reader)))
+    out("    TDC Resolution (ns): {:.6f}\n".format(reader.to_nanosec))
+    out("             Start Time: {}\n".format(reader.time_fr))
+    out("              Stop Time: {}\n".format(reader.time_to))
+
+    for i, event in zip(tqdm(range(limit)), reader):
+        if not i < limit:
+            break
+        out("########################\n")
+        out("# {}\n".format(event.event))
+        out("########################\n")
+        out("                 At (s): {: 12.3f}\n".format(event.timestamp))
+        for ch, n in enumerate(event.nhits):
+            fr = sum(event.nhits[:ch])
+            hits = ", ".join("{: 12.3f}".format(k*f) for f in event.hits[fr:fr+n])
+            out("Channel #{:03d} {:3d} Hit(s): {}\n".format(ch, n, hits))
+
+
+reader = LMFReader(args.filename)
+limit = 100 if not args.full else None
+k = None if not args.ns else reader.to_nanosec
+if args.output != "":
+    with open(args.output, 'w') as f:
+        main(reader, limit=limit, k=k, out=f.write)
+else:
+    main(reader, limit=limit, k=k)
