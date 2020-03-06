@@ -1,4 +1,0 @@
-numpy
-pybind11
-pytest
-tqdm

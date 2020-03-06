@@ -2,7 +2,6 @@
 
 from functools import partial
 from argparse import ArgumentParser
-from tqdm import tqdm
 
 from lmfpy import LMFReader
 
@@ -40,7 +39,7 @@ def main(reader: LMFReader, limit=None, k=None, out=None):
     out("             Start Time: {}\n".format(reader.time_fr))
     out("              Stop Time: {}\n".format(reader.time_to))
 
-    for i, event in zip(tqdm(range(limit)), reader):
+    for i, event in zip(range(limit), reader):
         if not i < limit:
             break
         out("########################\n")

@@ -56,12 +56,18 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
+
 setup(
     name='lmfpy',
     version='20180327',
     author='Daehyun You',
-    author_email='daehyun.park.you@gmail.com',
+    author_email='daehyun@dc.tohoku.ac.jp',
+    url='https://github.com/DaehyunPY/lmf2txt',
+    # description='',
+    # long_description='',
+    license='MIT',
     ext_modules=[CMakeExtension('lmfpy')],
-    cmdclass=dict(build_ext=CMakeBuild),
+    cmdclass={'build_ext': CMakeBuild},
+    install_requires=['numpy'],
     zip_safe=False,
 )

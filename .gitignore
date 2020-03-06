@@ -37,3 +37,6 @@ lmf2txt
 cmake-build-debug
 .idea
 build
+wheelhouse
+*.egg-info
+dist
