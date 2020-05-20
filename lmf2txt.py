@@ -1,127 +1,62 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-NUM_CHANNELS = 80
-NUM_IONS     = 200
+from functools import partial
+from argparse import ArgumentParser
+
+from lmfpy import LMFReader
 
 
-import argparse
-parser = argparse.ArgumentParser()
+parser = ArgumentParser()
 parser.add_argument("filename", help="LMF data file")
-parser.add_argument("-f", "--full", help="if omitted only the header and the first 100 events are read", action='store_true')
-parser.add_argument("-n", "--ns", help="convert values to nanoseconds", action='store_true')
-clargs = parser.parse_args()
-
-ifname = clargs.filename
-only_100_events_flag = not clargs.full
-time_conversion_flag = clargs.ns
-
-
-from time import ctime
-import numpy as np
-
-import lmf4py
+parser.add_argument("-f", "--full",
+                    help="if omitted only the header and the first 100 events are read",
+                    action='store_true')
+parser.add_argument("-n", "--ns",
+                    help="convert values to nanoseconds",
+                    action='store_true')
+parser.add_argument("-o", "--output",
+                    help="output, if not print it out",
+                    type=str, default="")
+args = parser.parse_args()
 
 
-LMF = lmf4py.LMF_IO(NUM_CHANNELS, NUM_IONS)
-if not LMF.OpenInputLMF(ifname):
-    raise SystemExit("Open failed")
+def main(reader: LMFReader, limit=None, k=None, out=None):
+    if limit is None:
+        limit = len(reader)
+    if k is None:
+        k = 1
+    if out is None:
+        out = partial(print, end="")
+
+    out("               Filename: {}\n".format(reader.recorded_at))
+    out("                Version: {}\n".format(reader.version))
+    out("                Comment: {}\n".format(reader.comment))
+    out("     Number of Channels: {}\n".format(reader.nchannels))
+    out(" Maximum Number of Hits: {}\n".format(reader.max_nhits))
+    out("  Number of Coordinates: {}\n".format(reader.ncoordinates))
+    out("       Number of Events: {}\n".format(len(reader)))
+    out("    TDC Resolution (ns): {:.6f}\n".format(reader.to_nanosec))
+    out("             Start Time: {}\n".format(reader.time_fr))
+    out("              Stop Time: {}\n".format(reader.time_to))
+
+    for i, event in zip(range(limit), reader):
+        if not i < limit:
+            break
+        out("########################\n")
+        out("# {}\n".format(event.event))
+        out("########################\n")
+        out("                 At (s): {: 12.3f}\n".format(event.timestamp))
+        for ch, n in enumerate(event.nhits):
+            fr = sum(event.nhits[:ch])
+            hits = ", ".join("{: 12.3f}".format(k*f) for f in event.hits[fr:fr+n])
+            out("Channel #{:03d} {:3d} Hit(s): {}\n".format(ch, n, hits))
 
 
-
-print "File name =", LMF.FilePathName
-print "Versionstring =", LMF.Versionstring
-print "Comment =", LMF.Comment
-
-print "Headersize =", LMF.Headersize
-
-print "Number of channels =", LMF.GetNumberOfChannels()
-print "Number of hits =", LMF.GetMaxNumberOfHits()
-print "Number of Coordinates =", LMF.Numberofcoordinates
-
-
-print "Timestamp info =", LMF.timestamp_format
-print "Common start" if LMF.common_mode == 0 else "Common stop"
-print "Number of events =", LMF.uint64_Numberofevents
-print "Data format =", LMF.data_format_in_userheader
-print "DAQ_ID =", hex(LMF.DAQ_ID)
-
-print "TDC resolution = {:.6f} ns".format(LMF.tdcresolution)
-if LMF.DAQ_ID == 0x000008 or LMF.DAQ_ID == 0x000010:
-#    print "TDC8HP Header Version", LMF.TDC8HP.UserHeaderVersion
-    print "Trigger channel = {} (counting from 1)".format(LMF.TDC8HP.TriggerChannel_p64)
-    print "Trigger dead time = {:f} ns".format(LMF.TDC8HP.TriggerDeadTime_p68)
-    print "Group range start = {:f} ns".format(LMF.TDC8HP.GroupRangeStart_p69)
-    print "Group range end = {:f} ns".format(LMF.TDC8HP.GroupRangeEnd_p70)
-
-print "Starttime:", ctime(LMF.Starttime)
-print "Stoptime: ", ctime(LMF.Stoptime)
-print
-
-
-
-#raise SystemExit
-
-
-
-number_of_hits = np.zeros((NUM_CHANNELS,), dtype=np.uint32)
-iTDC = np.zeros((NUM_CHANNELS, NUM_IONS), dtype=np.int32)
-dTDC = np.zeros((NUM_CHANNELS, NUM_IONS), dtype=np.double)
-
-first_timestamp = last_timestamp = 0
-
-while LMF.ReadNextEvent():
-    print "------- #{} -------".format(LMF.GetEventNumber())
-
-
-    new_timestamp = LMF.GetDoubleTimeStamp()
-    if first_timestamp == 0:
-        first_timestamp = new_timestamp
-
-    new_timestamp -= first_timestamp
-
-    if LMF.timestamp_format != 0:
-        print "T  = {:.3f} ns = \t{:f} s".format(new_timestamp*1.e9, new_timestamp)
-        print "dT = {:.3f} ns = \t{:f} s".format((new_timestamp - last_timestamp) * 1.e9, new_timestamp - last_timestamp)
-
-    last_timestamp = new_timestamp
-
-
-    LMF.GetNumberOfHitsArray(number_of_hits)
-
-    if LMF.errorflag:
-        raise SystemExit(LMF.GetErrorText(LMF.errorflag))
-
-
-    if LMF.data_format_in_userheader == 5:
-        LMF.GetTDCDataArray(dTDC)
-    else:
-        LMF.GetTDCDataArray(iTDC)
-
-    if LMF.errorflag:
-        raise SystemExit(LMF.GetErrorText(LMF.errorflag))
-
-
-    for i in xrange(LMF.GetNumberOfChannels()):
-        print "chan {:5d} {:5d}".format(i+1, number_of_hits[i]),
-
-        for j in xrange(number_of_hits[i]):
-            if LMF.data_format_in_userheader == 5:
-                print "{:f}".format(dTDC[i][j]),
-            else:
-                if time_conversion_flag:
-                    print "{:.3f}".format(iTDC[i][j] * LMF.tdcresolution),
-                else:
-                    print "{:5d}".format(iTDC[i][j]),
-
-        print
-
-
-    print "Levelinfo:", LMF.GetLastLevelInfo()
-    print
-
-
-    if only_100_events_flag and LMF.GetEventNumber() > 100:
-        break
-
-
-
+reader = LMFReader(args.filename)
+limit = 100 if not args.full else None
+k = None if not args.ns else reader.to_nanosec
+if args.output != "":
+    with open(args.output, 'w') as f:
+        main(reader, limit=limit, k=k, out=f.write)
+else:
+    main(reader, limit=limit, k=k)

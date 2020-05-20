@@ -1,176 +1,68 @@
-#ifdef _WIN32
-	#ifndef _WIN32_WINNT			// Specifies that the minimum required platform is Windows Vista.
-		#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
-	#endif
-#endif
+#include <iostream>
+#include <iomanip>
+
+#include "lmfpy/LMFReader.h"
 
 
-//#include "conio.h"
-#include "LMF_IO.h"
+using namespace std;
+using namespace lmfpy;
 
-#define NUM_CHANNELS	80
-#define NUM_IONS		200
+int main(int argc, char* argv[]) {
+    if (argc == 1) {
+        cout << "syntax: lmf2txt filename [--full] [--ns]" << endl;
+        cout << "        if --full is omitted then only the header" << endl;
+        cout << "        and the first 100 events will be written." << endl;
+        cout << "        --ns converts the values to nanoseconds." << endl;
+    }
+    if (argc > 4) {
+        cout << "wrong number of arguments." << endl;
+        return 0;
+    }
 
+    string filename = argv[1];
+    bool is_full = false, is_ns = false;
+    if (argc >= 3)	{
+        if (strcmp(argv[2], "--full") == 0) is_full = true;
+        if (strcmp(argv[2], "--ns") == 0) is_ns = true;
+    }
+    if (argc == 4)	{
+        if (strcmp(argv[3], "--full") == 0) is_full = true;
+        if (strcmp(argv[3], "--ns") == 0) is_ns = true;
+    }
 
+    auto afile = make_shared<LMFReader>(filename);
+    auto time_fr = chrono::system_clock::to_time_t(afile->time_fr());
+    auto time_to = chrono::system_clock::to_time_t(afile->time_to());
+    cout << "               Filename: " << afile->recorded_at() << endl;
+    cout << "                Version: " << afile->version() << endl;
+    cout << "                Comment: " << afile->comment() << endl;
+    cout << "     Number of Channels: " << afile->nchannels() << endl;
+    cout << " Maximum Number of Hits: " << afile->max_nhits() << endl;
+    cout << "  Number of Coordinates: " << afile->ncoordinates() << endl;
+    cout << "       Number of Events: " << afile->end() << endl;
+    cout << "    TDC Resolution (ns): " << afile->to_nanosec() << endl;
+    cout << "             Start Time: " << ctime(&time_fr);
+    cout << "              Stop Time: " << ctime(&time_to);
 
-#define FPRINT fprintf(ascii_outputfile_handle,
-//#define FPRINT if (flag) printf(
-
-
-
-int main(int argc, char* argv[])
-{
-	#ifdef _DEBUG
-		printf("\n***********************\n    SLOW DEBUG VERSION USED\n***********************\n");
-	#endif
-
-	printf("syntax: lmf2txt filename [-f] [-ns]\n");
-	printf("        if -f is omitted then only the header\n");
-	printf("        and the first 100 events will be written.\n");
-	printf("        -ns converts the values to nanoseconds.\n");
-
-	char LMF_Filename[500];
-
-	if (argc < 2 || argc > 4)	{
-		printf("wrong number of arguments.");
-		return 0;
-	}
-
-	bool only_100_events_flag = true;
-	bool time_conversion_flag = false;
-
-	if (argc >= 3)	{
-		if (strcmp((char*)argv[2],"-f") == 0) only_100_events_flag = false;
-		if (strcmp((char*)argv[2],"-ns") == 0) time_conversion_flag = true;
-		
-	}
-	if (argc == 4)	{
-		if (strcmp((char*)argv[3],"-f") == 0) only_100_events_flag = false;
-		if (strcmp((char*)argv[3],"-ns") == 0) time_conversion_flag = true;
-		
-	}
-
-	strcpy(LMF_Filename,(char*)argv[1]);
-	unsigned int	i,j;
-	unsigned int	number_of_hits[NUM_CHANNELS];
-	memset(number_of_hits,0,NUM_CHANNELS*4);
-	int				iTDC[NUM_CHANNELS][NUM_IONS];
-	double			dTDC[NUM_CHANNELS][NUM_IONS];
-
-	LMF_IO * LMF = new LMF_IO(NUM_CHANNELS,NUM_IONS);
-
-	if (!LMF->OpenInputLMF(LMF_Filename)) {
-		return false;
-	}
-
-	char error_text[512];
-	std::string ascii_output_filename = LMF_Filename;
-	ascii_output_filename += std::string(".txt");
-	FILE * ascii_outputfile_handle = fopen(ascii_output_filename.c_str(),"wt");
-
-
-//	bool flag = false;
-
-// Print parts of the header information:
-// ---------------------------------------
-	FPRINT"File name = %s\n",LMF->FilePathName.c_str());
-	FPRINT"Versionstring = %s\n",LMF->Versionstring.c_str());
-	FPRINT"Comment = %s\n",LMF->Comment.c_str());
-
-	FPRINT"Headersize = %i\n",LMF->Headersize);
-
-	FPRINT"Number of channels = %i\n",LMF->GetNumberOfChannels());
-	FPRINT"Number of hits = %i\n",LMF->GetMaxNumberOfHits());
-	FPRINT"Number of Coordinates = %i\n",LMF->Numberofcoordinates);
-	
-	
-	FPRINT"Timestamp info = %i\n",LMF->timestamp_format);
-	if (LMF->common_mode == 0) FPRINT"Common start\n"); else FPRINT"Common stop\n");
-	FPRINT"Number of events = %lli\n",LMF->uint64_Numberofevents);
-	FPRINT"Data format = %i\n",LMF->data_format_in_userheader);
-	FPRINT"DAQ_ID = 0x%x\n",LMF->DAQ_ID);
-
-	FPRINT"TDC resolution = %lf ns\n",LMF->tdcresolution);
-	if (LMF->DAQ_ID == 0x000008 || LMF->DAQ_ID == 0x000010) {
-		//FPRINT"TDC8HP Header Version %i\n",LMF->TDC8HP.UserHeaderVersion);
-		FPRINT"Trigger channel = %i (counting from 1)\n",LMF->TDC8HP.TriggerChannel_p64);
-		FPRINT"Trigger dead time = %lf ns\n",LMF->TDC8HP.TriggerDeadTime_p68);
-		FPRINT"Group range start = %lf ns\n",LMF->TDC8HP.GroupRangeStart_p69);
-		FPRINT"Group range end = %lf ns\n",LMF->TDC8HP.GroupRangeEnd_p70);
-	}
-	
-	FPRINT"Starttime: %s",ctime(&LMF->Starttime));
-	FPRINT"Stoptime:  %s",ctime(&LMF->Stoptime));
-	FPRINT"\n");
-
-
-//	LMF->OpenOutputLMF("test.lmf");
-
-	double first_timestamp = 0.;
-	double last_timestamp = 0.;
-
-// Start reading event data:
-// ---------------------------------------
-	while(true) {
-		if (LMF->ReadNextEvent())  {
-			FPRINT"------- #%llu -------\n",LMF->GetEventNumber());
-			double new_timestamp = LMF->GetDoubleTimeStamp();
-			if (first_timestamp == 0.) first_timestamp = new_timestamp;
-			new_timestamp -= first_timestamp;
-			if (LMF->timestamp_format != 0) FPRINT"T  = %.3lf ns = \t%lf s\n",new_timestamp*1.e9,new_timestamp);
-			if (LMF->timestamp_format != 0) FPRINT"dT = %.3lf ns = \t%lf s\n",(new_timestamp-last_timestamp)*1.e9,new_timestamp-last_timestamp);
-
-			last_timestamp = new_timestamp;
-
-			LMF->GetNumberOfHitsArray(number_of_hits);
-			if (LMF->errorflag) {
-				LMF->GetErrorText(LMF->errorflag,error_text);
-				FPRINT"%s",error_text);
-				return false;
-			}
-			if (LMF->data_format_in_userheader==5) {
-				LMF->GetTDCDataArray(&dTDC[0][0]);
-			} else LMF->GetTDCDataArray(&iTDC[0][0]);;
-
-			if (LMF->errorflag) {
-				LMF->GetErrorText(LMF->errorflag,error_text);
-				FPRINT"%s",error_text);
-				return false;
-			}
-
-			for (i=0;i<LMF->GetNumberOfChannels();i++) {
-				FPRINT"chan %5i",i+1);
-				FPRINT" %5i",number_of_hits[i]);
-				if (LMF->data_format_in_userheader==5) {
-					for (j=0;j<number_of_hits[i];j++) FPRINT" %lf",dTDC[i][j]);
-				} else
-					for (j=0;j<number_of_hits[i];j++) {
-						if (!time_conversion_flag) FPRINT" %5i",iTDC[i][j]);
-						if ( time_conversion_flag) FPRINT" %.3lf",iTDC[i][j]*LMF->tdcresolution);
-					}
-				FPRINT"\n");
-			}
-			FPRINT"Levelinfo: %llx\n",LMF->GetLastLevelInfo());
-			FPRINT"\n");
-		}
-
-//		if (LMF->GetEventNumber()%50000 == 0) {
-//			__int8 c;
-//			while (_kbhit()) c = _getch();
-//			if (c == 'q') break;
-//		}
-
-		if (LMF->errorflag) break;
-		if (LMF->GetEventNumber() > 100	&& only_100_events_flag) break;
-	}
-
-	//LMF->CloseOutputLMF();
-
-
-	if (LMF) delete LMF;
-
-	fclose(ascii_outputfile_handle);
-
-	return 0;
+    auto limit = is_full ? afile->end() : 100;
+    auto i = 0;
+    auto iter = afile->begin();
+    for (; iter != afile->end(); ++i) {
+        if (i >= limit) break;
+        auto event = *iter;
+        cout << "########################" << endl;
+        cout << "# " << event.event << endl;
+        cout << "########################" << endl;
+        cout << "                 At (s): " << setw(12) << event.timestamp << endl;
+        auto ch = 0, k = 0;
+        auto n = event.nhits.begin();
+        for (; n != event.nhits.end(); ++ch, ++k, ++n) {
+            cout << "Channel #" << setw(3) << ch << " " << setw(3) << *n << " Hit(s): ";
+            for (auto kk = 0; kk < *n; ++k, ++kk) {
+                cout << setw(12) << event.hits[k] << ", ";
+            }
+            cout << endl;
+        }
+    }
+    return 0;
 }
-
