@@ -1,5 +1,10 @@
 # Main Executable
 lmf2txt
+WriteLMF
+
+# Output files
+output.lmf
+output.lmf.txt
 
 # Temporary files
 *~
