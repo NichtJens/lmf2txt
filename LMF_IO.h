@@ -6,13 +6,13 @@
 #include "time.h"
 
 
-#ifdef __linux__
-	#pragma message "Compile for Linux"
-#endif
+//#ifdef __linux__
+//	#pragma message "Compile for Linux"
+//#endif
 
-#ifdef _WIN32
-	#pragma message "Compile for Windows"
-#endif
+//#ifdef _WIN32
+//	#pragma message "Compile for Windows"
+//#endif
 
 
 #ifdef __linux__
