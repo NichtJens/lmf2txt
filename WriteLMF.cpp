@@ -32,7 +32,7 @@ int main(int argc, char* argv[], char* envp[])
 		template_name[strlen(template_name)-1] = 0;
 	}
 
-	sprintf(template_name+strlen(template_name),"%s","Cobold2011R5-2_Header-Template_1TDC8HP.lmf");
+	sprintf(template_name+strlen(template_name),"%s","data/Cobold2011R5-2_Header-Template_1TDC8HP.lmf");
 
 	if (!LMF->OpenInputLMF(template_name)) {
 		printf("error: could not open the template file\n%s\n",template_name);
@@ -45,7 +45,7 @@ int main(int argc, char* argv[], char* envp[])
 	FILE * in_file = 0;
 	int result = 0;
 	if (argc < 2)
-		result = fopen_s(&in_file, "input_file.dat", "rt");
+		result = fopen_s(&in_file, "data/input_file.dat", "rt");
 	else
 		result = fopen_s(&in_file, argv[1], "rt");
 
@@ -64,7 +64,7 @@ int main(int argc, char* argv[], char* envp[])
 	LMF->TDC8HP.GroupingEnable_p66_output	= 0;	 // can be ignored
 	LMF->TDC8HP.GroupRangeStart_p69			= -100.; // can be ignored
 	LMF->TDC8HP.GroupRangeEnd_p70			= 1000.; // can be ignored
-	LMF->OpenOutputLMF("output.lmf");
+	LMF->OpenOutputLMF((char*) "output.lmf");
 
 	double dTimeStamp = 0.; // timestamp in seconds
 
