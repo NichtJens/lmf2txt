@@ -1,7 +1,10 @@
-TARGET = lmf2txt
+TARGETS = lmf2txt WriteLMF
+TARGET_OBJECTS = $(addsuffix .o, $(TARGETS))
+
 PYBIND = lmf4py
 OBJECTS = LMF_IO.o
 HEADERS = $(patsubst %.o, %.h, $(OBJECTS))
+
 CC = g++
 LIBS = #-lm
 #CFLAGS = -g -O0 #for debug symbols
@@ -9,9 +12,9 @@ CFLAGS = -O2 #for optimization
 CFLAGS += -Wall -Werror
 
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(OBJECTS) $(TARGET).o
+$(TARGETS): %: $(OBJECTS) %.o
 	$(CC) $? $(CFLAGS) $(LIBS) -o $@
 
 
@@ -26,7 +29,7 @@ $(PYBIND).so: $(OBJECTS) $(PYBIND).o
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) $(OBJECTS) $(TARGET).o $(PYBIND).o $(PYBIND).so
+	rm -f $(TARGETS) $(TARGET_OBJECTS) $(OBJECTS) $(PYBIND).o $(PYBIND).so
 
 .PHONY: all python clean
 
