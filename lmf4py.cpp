@@ -10,6 +10,7 @@
 
 //aliases for overloaded methods
 bool (LMF_IO::*OpenInputLMF)(__int8*) = &LMF_IO::OpenInputLMF;
+bool (LMF_IO::*OpenOutputLMF)(__int8*) = &LMF_IO::OpenOutputLMF;
 const char* (LMF_IO::*GetErrorText)(__int32) = &LMF_IO::GetErrorText;
 
 //void (LMF_IO::*GetTDCDataArray_int)(__int32 *tdc) = &LMF_IO::GetTDCDataArray;
@@ -80,6 +81,8 @@ BOOST_PYTHON_MODULE(lmf4py)
     class_<LMF_IO>("LMF_IO", init<__int32, __int32>())
 
         //regular methods
+        .def("CloseInputLMF", &LMF_IO::CloseInputLMF)
+        .def("CloseOutputLMF", &LMF_IO::CloseOutputLMF)
         .def("GetNumberOfChannels", &LMF_IO::GetNumberOfChannels)
         .def("GetMaxNumberOfHits", &LMF_IO::GetMaxNumberOfHits)
         .def("ReadNextEvent", &LMF_IO::ReadNextEvent)
@@ -93,6 +96,7 @@ BOOST_PYTHON_MODULE(lmf4py)
 
         //overloaded methods
         .def("OpenInputLMF", OpenInputLMF)
+        .def("OpenOutputLMF", OpenOutputLMF)
         .def("GetErrorText", GetErrorText)
 
         //methods with array arguments
@@ -114,6 +118,11 @@ BOOST_PYTHON_MODULE(lmf4py)
         .def_readonly("Starttime", &LMF_IO::Starttime)
         .def_readonly("Stoptime", &LMF_IO::Stoptime)
         .def_readonly("errorflag", &LMF_IO::errorflag)
+
+        .def_readwrite("number_of_channels_output", &LMF_IO::number_of_channels_output)
+        .def_readwrite("max_number_of_hits_output", &LMF_IO::max_number_of_hits_output)
+        .def_readwrite("frequency", &LMF_IO::frequency)
+        .def_readwrite("tdcresolution_output", &LMF_IO::tdcresolution_output)
 
         //custom member variables
         .def_readonly("TDC8HP", &LMF_IO::TDC8HP)
