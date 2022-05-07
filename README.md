@@ -14,7 +14,7 @@ The Visual Studio project for Windows compilation should also still work fine. I
 
 [Boost.Python](https://wiki.python.org/moin/boost.python)-based wrapper of LMF_IO.
 
-Compile the library via `make python`. Needs a `make clean` before if lmf2txt has been compiled to ensure the shared object can be generated.
+Compile the library via `make python`. Needs a `make clean-objects` before if lmf2txt has been compiled to ensure the shared object can be generated.
 
 So far, only classes/structs used in the original C lmf2txt are wrapped.
 

@@ -28,10 +28,14 @@ $(PYBIND).so: $(OBJECTS) $(PYBIND).o
 %.o: %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
-	rm -f $(TARGETS) $(TARGET_OBJECTS) $(OBJECTS) $(PYBIND).o $(PYBIND).so
+clean: clean-objects
+	rm -f $(TARGETS)
 
-.PHONY: all python clean
+clean-objects:
+	rm -f $(TARGET_OBJECTS) $(OBJECTS) $(PYBIND).o $(PYBIND).so
+
+
+.PHONY: all python clean clean-objects
 
 
 
