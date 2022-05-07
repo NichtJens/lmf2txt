@@ -5,6 +5,8 @@ WriteLMF
 # Output files
 output.lmf
 output.lmf.txt
+testpy.lmf
+testpy.lmf.txt
 
 # Temporary files
 *~
